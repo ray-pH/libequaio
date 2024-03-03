@@ -77,8 +77,15 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expressio
     // first token must be a symbol
     if let Token::Symbol(ref s) = tokens[0] {
         if tokens.len() == 1 {
+            let is_param   = ctx.parameters.contains(s);
+            let is_numeric = ctx.handle_numerics && s.parse::<f64>().is_ok();
+            let exp_type = if is_param || is_numeric {
+                ExpressionType::ValueConst
+            } else {
+                ExpressionType::ValueVar
+            };
             return Some(Expression {
-                exp_type: ExpressionType::Value,
+                exp_type,
                 symbol: s.clone(),
                 children: None,
             });
