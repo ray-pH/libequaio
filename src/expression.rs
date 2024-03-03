@@ -26,10 +26,41 @@ pub struct Context {
     pub handle_numerics: bool,
 }
 
+impl Context {
+    pub fn add_param(&mut self, param : String) {
+        if !self.parameters.contains(&param) { self.parameters.push(param); }
+    }
+    pub fn add_params(&mut self, params : Vec<String>) {
+        for p in params { self.add_param(p); }
+    }
+    pub fn remove_param(&mut self, param : &String) {
+        self.parameters.retain(|p| p != param);
+    }
+    pub fn remove_params(&mut self, params : &Vec<String>) {
+        for p in params { self.remove_param(p); }
+    }
+}
+
 pub type Address  = Vec<usize>;
 pub type MatchMap = HashMap<String,Expression>;
 
 impl Expression {
+    pub fn is_operator(&self) -> bool {
+        match self.exp_type {
+            ExpressionType::OperatorUnary | 
+            ExpressionType::OperatorBinary | 
+            ExpressionType::OperatorNary => true,
+            _ => false,
+        }
+    }
+    pub fn is_value(&self) -> bool {
+        match self.exp_type {
+            ExpressionType::ValueConst | 
+            ExpressionType::ValueVar => true,
+            _ => false,
+        }
+    }
+
     pub fn to_string(&self, parentheses : bool) -> String {
         match &self.exp_type {
             ExpressionType::ValueConst => self.symbol.clone(),
