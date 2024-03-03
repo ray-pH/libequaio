@@ -22,8 +22,8 @@ mod pattern_matching {
             binary_ops: vec_strings!["+", "-", "*", "/"],
             handle_numerics: true,
         };
-        let expr = parser_prefix::to_expression(expr.into(), ctx.clone()).unwrap();
-        let pattern = parser_prefix::to_expression(pattern.into(), ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression(expr, ctx.clone()).unwrap();
+        let pattern = parser_prefix::to_expression(pattern, ctx.clone()).unwrap();
         println!("matching {} with {}", expr.to_string(true), pattern.to_string(true));
         expr.get_pattern_matches(&pattern)
     }

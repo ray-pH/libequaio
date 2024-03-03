@@ -14,7 +14,7 @@ fn main() {
     println!("{}", expr.to_string(true));
 
     // let pattren = parser_prefix::to_expression("+(A,f(B,C))".into(), ctx.clone()).unwrap();
-    let pattern = parser_prefix::to_expression("+(A,B)".into(), ctx.clone()).unwrap();
+    let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
     let matches = expr.get_pattern_matches(&pattern);
     for (address, map) in matches {
         println!("Match at address {:?}", address);

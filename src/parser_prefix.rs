@@ -115,6 +115,7 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expressio
     None
 }
 
-pub fn to_expression(s : String, ctx : Context) -> Option<Expression> {
+pub fn to_expression<T: AsRef<str>>(text : T, ctx : Context) -> Option<Expression> {
+    let s : String = text.as_ref().to_string();
     tokens_to_expression(&tokenize(s), ctx)
 }
