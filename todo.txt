@@ -1,0 +1,6 @@
+simple todo to achieve
+
+- 
+rules:
+a + b = b + a
+x + 3 => 3 + x

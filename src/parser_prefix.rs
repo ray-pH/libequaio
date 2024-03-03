@@ -1,0 +1,113 @@
+use super::expression::{Expression, ExpressionType, Context};
+
+#[derive(PartialEq, Clone)]
+enum Token {
+    OpenParen,
+    CloseParen,
+    Comma,
+    Symbol(String),
+}
+
+fn tokenize(s : String) -> Vec<Token> {
+    let mut tokens = Vec::new();
+    let mut current_symbol = String::new();
+
+    let push_symbol_if_any = |current_symbol : &mut String, tokens : &mut Vec<Token>| {
+        if current_symbol.len() > 0 {
+            tokens.push(Token::Symbol(current_symbol.clone()));
+            current_symbol.clear();
+        }
+    };
+    for c in s.chars() {
+        match c {
+            '(' => {
+                push_symbol_if_any(&mut current_symbol, &mut tokens);
+                tokens.push(Token::OpenParen);
+            },
+            ')' => {
+                push_symbol_if_any(&mut current_symbol, &mut tokens);
+                tokens.push(Token::CloseParen);
+            },
+            ',' => {
+                push_symbol_if_any(&mut current_symbol, &mut tokens);
+                tokens.push(Token::Comma);
+            },
+            _ if c.is_whitespace() => {
+                // ignore whitespace
+            },
+            _ => {
+                current_symbol.push(c);
+            },
+        }
+    };
+    push_symbol_if_any(&mut current_symbol, &mut tokens);
+    tokens
+}
+
+
+/// split the tokens by commas
+/// 1,2,f(3,4),g(f(1,2),3)
+/// -> [[1], [2], [f(3,4)], [g(f(1,2),3)]]
+fn split_tokens_by_comma(tokens : &Vec<Token>) -> Vec<Vec<Token>> {
+    let mut result  : Vec<Vec<Token>> = Vec::new();
+    let mut current : Vec<Token> = Vec::new();
+    let mut paren_count = 0;
+    for t in tokens {
+        match t {
+            Token::OpenParen => { paren_count += 1; current.push(t.clone()); },
+            Token::CloseParen => { paren_count -= 1; current.push(t.clone()); },
+            Token::Comma => {
+                if paren_count == 0 {
+                    result.push(current);
+                    current = Vec::new();
+                } else {
+                    current.push(t.clone());
+                }
+            },
+            _ => {
+                current.push(t.clone());
+            },
+        }
+    }
+    if current.len() > 0 { result.push(current); }
+    result
+}
+
+fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expression> {
+    // first token must be a symbol
+    if let Token::Symbol(ref s) = tokens[0] {
+        if tokens.len() == 1 {
+            return Some(Expression {
+                exp_type: ExpressionType::Value,
+                symbol: s.clone(),
+                children: None,
+            });
+        }
+        // must be an operator, which mean
+        // the second token must be a open paren
+        // the last token must be a close paren
+        if tokens[1] != Token::OpenParen { return None; }
+        if tokens[tokens.len() - 1] != Token::CloseParen { return None; }
+        // get a slice of the tokens between the open and close paren
+        let inner_tokens = tokens[2..tokens.len() - 1].to_vec();
+        let child_tokens = split_tokens_by_comma(&inner_tokens);
+        let children = child_tokens.iter().map(
+            |t| tokens_to_expression(&t,ctx.clone())).collect::<Option<Vec<Expression>>>();
+        if children.is_none() { return None; }
+        let exp_type = match children.as_ref().unwrap().len() {
+            1 if ctx.unary_ops.contains(s) => ExpressionType::OperatorUnary,
+            2 if ctx.binary_ops.contains(s) => ExpressionType::OperatorBinary,
+            _ => ExpressionType::OperatorNary,
+        };
+        return Some(Expression {
+            exp_type,
+            symbol: s.clone(),
+            children,
+        });
+    }
+    None
+}
+
+pub fn to_expression(s : String, ctx : Context) -> Option<Expression> {
+    tokens_to_expression(&tokenize(s), ctx)
+}
