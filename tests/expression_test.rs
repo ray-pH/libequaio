@@ -73,3 +73,25 @@ mod pattern_matching {
     }
 
 }
+
+#[cfg(test)]
+mod expression_replacement {
+    use super::*;
+    
+    #[test]
+    fn replace_expression() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+", "*"],
+            handle_numerics: false,
+        };
+        let expr = parser_prefix::to_expression("+(a,+(b,c))", ctx.clone()).unwrap();
+        let expr_as_replacement = parser_prefix::to_expression("*(b,c)", ctx.clone()).unwrap();
+        let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), vec![1]);
+        assert_eq!(new_expr.unwrap().to_string(true),"(a + (b * c))");
+        
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement, vec![1,1]);
+        assert_eq!(new_expr2.unwrap().to_string(true),"(a + (b + (b * c)))");
+    }
+}

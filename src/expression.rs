@@ -181,4 +181,22 @@ impl Expression {
             },
         }
     }
+    
+    /// Create a new expression by replacing the expression at the address with the new expression
+    pub fn replace_expression_at(&self, new_expr : Expression, addr : Address) -> Option<Expression> {
+        if addr.len() == 0 { return Some(new_expr); }
+        if self.children.is_none() { return None; }
+        if addr[0] >= self.children.as_ref().unwrap().len() { return None; }
+        else {
+            let new_child = self.children.as_ref().unwrap()[addr[0]]
+                .replace_expression_at(new_expr, addr[1..].to_vec())?;
+            let mut new_children = self.children.as_ref().unwrap().clone();
+            new_children[addr[0]] = new_child;
+            return Some(Expression {
+                exp_type : self.exp_type.clone(),
+                symbol : self.symbol.clone(),
+                children : Some(new_children),
+            });
+        }
+    }
 }
