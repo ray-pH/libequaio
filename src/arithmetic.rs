@@ -1,5 +1,8 @@
+use crate::expression::{Expression, ExpressionType};
+
 use super::expression as exp;
 
+#[derive(PartialEq, Clone)]
 pub enum ArithmeticOperator {
     Add, Sub, Mul, Div,   // standard binary ops
     Negative, Reciprocal, // standard unary ops
@@ -58,15 +61,40 @@ impl exp::Expression {
             },
         }
     }
-
-    pub fn calculate_expr(&self) -> exp::Expression {
-        let result = self.calculate_numeric();
-        if result.is_none() { return self.clone(); }
-        let result = result.unwrap();
-        exp::Expression {
-            exp_type: exp::ExpressionType::ValueConst,
-            symbol: result.to_string(),
-            children: None,
+    
+    // if the expression is a negative unary operator on a numeric value, 
+    // change it to the negative of the numeric value (as a numeric value)
+    pub fn handle_negative_unary_on_numerics(&self) -> Expression {
+        if self.children.is_none() { return self.clone(); }
+        let op = self.identify_arithmetic_operator();
+        if op == Some(ArithmeticOperator::Negative) && self.children.as_ref().unwrap()[0].is_numeric(){
+            let child = self.children.as_ref().unwrap()[0].clone();
+            let new_symbol = format!("{}", -child.symbol.parse::<f64>().unwrap());
+            return Expression {
+                symbol: new_symbol,
+                children: None,
+                exp_type: ExpressionType::ValueConst,
+            }
+        }
+        let new_children = self.children.as_ref().unwrap().iter()
+            .map(|c| c.handle_negative_unary_on_numerics()).collect();
+        return Expression {
+            symbol: self.symbol.clone(),
+            children: Some(new_children),
+            exp_type: self.exp_type.clone(),
+        }
+    }
+    
+    pub fn is_numeric(&self) -> bool {
+        return self.exp_type == ExpressionType::ValueConst 
+            && self.symbol.parse::<f64>().is_ok()
+    }
+    
+    pub fn is_arithmetic_train_operator(&self) -> bool {
+        match self.identify_arithmetic_operator() {
+            Some(ArithmeticOperator::AddTrain) => true,
+            Some(ArithmeticOperator::MulTrain) => true,
+            _ => false,
         }
     }
 
