@@ -100,12 +100,12 @@ impl Expression {
     }
 
     /// Get the expression from the address
-    pub fn traverse_address(&self, address : Address) -> Option<&Expression> {
+    pub fn at(&self, address : Address) -> Option<&Expression> {
         if address.len() == 0 { return Some(self); }
         if self.children.is_none() { return None; }
         let index = address[0];
         if index >= self.children.as_ref().unwrap().len() { return None; }
-        self.children.as_ref().unwrap()[index].traverse_address(address[1..].to_vec())
+        self.children.as_ref().unwrap()[index].at(address[1..].to_vec())
     }
 
     pub fn get_pattern_matches(&self, pattern : &Expression) -> Vec<(Address,MatchMap)> {
