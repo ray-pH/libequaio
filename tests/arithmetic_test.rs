@@ -40,6 +40,19 @@ mod calculation {
 }
 
 #[cfg(test)]
+mod generate_equation {
+    use super::*;
+    #[test]
+    fn simple_equation() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("+(1,2)", ctx).unwrap();
+        let eq = expr.generate_simple_arithmetic_equation().unwrap();
+        assert_eq!(eq.clone().children.unwrap()[1].symbol, "3");
+        assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
+    }
+}
+
+#[cfg(test)]
 mod normalization {
     use super::*;
     

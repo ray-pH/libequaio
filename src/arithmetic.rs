@@ -1,4 +1,4 @@
-use crate::expression::{Expression, ExpressionType};
+use crate::expression::{Expression, ExpressionType, StatementSymbols};
 
 use super::expression as exp;
 
@@ -97,6 +97,32 @@ impl exp::Expression {
             _ => false,
         }
     }
+    // directly calculatable means that the value can be calculated without needing to calculate the children first
+    // (i.e. the children are all numeric values)
+    pub fn is_directly_calculatable(&self) -> bool {
+        if !self.is_operator() { return false; }
+        // return true if all children are numeric values
+        return self.children.as_ref().unwrap().iter().all(|c| c.is_numeric());
+    }
+    
+    pub fn generate_simple_arithmetic_equation(&self) -> Option<Expression> {
+        if !self.is_directly_calculatable() { return None };
+        let val = self.calculate_numeric()?;
+        let lhs = self.clone();
+        let rhs = Expression {
+            symbol: format!("{}", val),
+            children: None,
+            exp_type: ExpressionType::ValueConst,
+        };
+        return Some(Expression {
+            symbol: StatementSymbols::Equal.to_string(),
+            children: Some(vec![lhs, rhs]),
+            exp_type: ExpressionType::StatementOperatorBinary,
+        })
+    }
+
+    
+    // pub fn generate_equation_at(addr: exp::Address) -> 
 
     /// Calculate the value of the expression if it is an arithmetic operation
     pub fn calculate_numeric(&self) -> Option<f64> {
