@@ -5,7 +5,8 @@ use super::expression as exp;
 #[derive(PartialEq, Clone)]
 pub enum ArithmeticOperator {
     Add, Sub, Mul, Div,   // standard binary ops
-    Negative, Reciprocal, // standard unary ops
+    Negative,             // standard unary ops
+    // Negative, Reciprocal, // standard unary ops
     AddTrain, MulTrain,   // operator train
 }
 
@@ -18,7 +19,7 @@ impl ArithmeticOperator {
             ArithmeticOperator::Mul => "*",
             ArithmeticOperator::Div => "/",
             ArithmeticOperator::Negative => "-",
-            ArithmeticOperator::Reciprocal => "/",
+            // ArithmeticOperator::Reciprocal => "/",
             ArithmeticOperator::AddTrain => "+",
             ArithmeticOperator::MulTrain => "*",
         }
@@ -29,7 +30,8 @@ pub fn get_arithmetic_ctx() -> exp::Context {
     use ArithmeticOperator::*;
     exp::Context {
         parameters: vec![],
-        unary_ops:  vec![Negative.to_string(), Reciprocal.to_string()],
+        // unary_ops:  vec![Negative.to_string(), Reciprocal.to_string()],
+        unary_ops:  vec![Negative.to_string()],
         binary_ops: vec![Add.to_string(), Sub.to_string(), Mul.to_string(), Div.to_string()],
         handle_numerics: true,
     }
@@ -44,7 +46,7 @@ impl exp::Expression {
             0 => None,
             1 => match symbol {
                 "-" => Some(ArithmeticOperator::Negative),
-                "/" => Some(ArithmeticOperator::Reciprocal),
+                // "/" => Some(ArithmeticOperator::Reciprocal),
                 _ => None,
             },
             2 => match symbol {
@@ -97,6 +99,7 @@ impl exp::Expression {
             _ => false,
         }
     }
+    
     // directly calculatable means that the value can be calculated without needing to calculate the children first
     // (i.e. the children are all numeric values)
     pub fn is_directly_calculatable(&self) -> bool {
@@ -156,10 +159,10 @@ impl exp::Expression {
                 let child = children[0].calculate_numeric()?;
                 Some(-child)
             },
-            Reciprocal => {
-                let child = children[0].calculate_numeric()?;
-                Some(1.0 / child)
-            },
+            // Reciprocal => {
+            //     let child = children[0].calculate_numeric()?;
+            //     Some(1.0 / child)
+            // },
             AddTrain => {
                 let result = children.iter().map(|c| c.calculate_numeric()).sum::<Option<f64>>()?;
                 Some(result)
