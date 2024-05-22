@@ -8,7 +8,27 @@ pub enum ExpressionType {
     OperatorNary,
     ValueConst,
     ValueVar,
+    StatementOperatorBinary,
 }
+
+pub enum StatementSymbols {
+    Equal,
+}
+impl StatementSymbols {
+    pub fn to_string(&self) -> String { self.as_str().into() }
+    pub fn as_str(&self) -> &str {
+        match self {
+            StatementSymbols::Equal => "=",
+        }
+    }
+    pub fn from_str(s : &str) -> Option<StatementSymbols> {
+        match s {
+            "=" => Some(StatementSymbols::Equal),
+            _ => None,
+        }
+    }
+}
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Expression {
@@ -60,6 +80,12 @@ impl Expression {
             _ => false,
         }
     }
+    pub fn is_statement(&self) -> bool {
+        match self.exp_type {
+            ExpressionType::StatementOperatorBinary => true,
+            _ => false,
+        }
+    }
 
     pub fn to_string(&self, parentheses : bool) -> String {
         match &self.exp_type {
@@ -73,6 +99,7 @@ impl Expression {
                     format!("{}{}", self.symbol, 
                         self.children.as_ref().unwrap()[0].to_string(parentheses))
                 },
+            ExpressionType::StatementOperatorBinary |
             ExpressionType::OperatorBinary => 
                 if parentheses {
                     format!("({} {} {})", 
@@ -140,9 +167,10 @@ impl Expression {
     /// Try to match the pattern expression with this expression. (match the root node)
     /// Returns a map of the symbols, or None if there is the pattern does not match.
     pub fn patten_match_this_node(&self, pattern : &Expression) -> Option<MatchMap> {
+        use ExpressionType::*;
         match pattern.exp_type {
             // if the pattern is a constant parameter, then it must match exactly with this expression
-            ExpressionType::ValueConst => {
+            ValueConst => {
                 if pattern.symbol == self.symbol && pattern.exp_type == self.exp_type {
                     let empty_map = HashMap::new();
                     return Some(empty_map);
@@ -150,14 +178,14 @@ impl Expression {
                 None
             },
             // if the pattern is a variable, then it must mapped to this expression
-            ExpressionType::ValueVar => {
+            ValueVar => {
                 let mut map = HashMap::new();
                 map.insert(pattern.symbol.clone(), self.clone());
                 Some(map)
             },
             // if the pattern is an operator, then it must match
             // then, pattern match each child
-            ExpressionType::OperatorUnary | ExpressionType::OperatorBinary | ExpressionType::OperatorNary => {
+            StatementOperatorBinary | OperatorUnary | OperatorBinary | OperatorNary => {
                 // invalid if the symbol or type is different
                 if pattern.symbol != self.symbol { return None; }
                 if pattern.exp_type != self.exp_type { return None; }

@@ -11,6 +11,24 @@ fn print_matches(matches : Vec<(exp::Address,exp::MatchMap)>) {
         println!("");
     }
 }
+
+#[cfg(test)]
+mod basic {
+    use super::*;
+    #[test]
+    fn is_statement() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+", "*"],
+            handle_numerics: false,
+        };
+        let expr = parser_prefix::to_expression("=(a,+(b,c))", ctx.clone()).unwrap();
+        assert_eq!(expr.to_string(true), "(a = (b + c))");
+        assert!(expr.is_statement());
+    }
+}
+
 #[cfg(test)]
 mod pattern_matching {
     use super::*;

@@ -1,4 +1,4 @@
-use super::expression::{Expression, ExpressionType, Context};
+use super::expression::{Expression, ExpressionType, Context, StatementSymbols};
 
 #[derive(PartialEq, Clone)]
 enum Token {
@@ -104,6 +104,7 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expressio
         let exp_type = match children.as_ref().unwrap().len() {
             1 if ctx.unary_ops.contains(s) => ExpressionType::OperatorUnary,
             2 if ctx.binary_ops.contains(s) => ExpressionType::OperatorBinary,
+            2 if StatementSymbols::from_str(s.as_str()).is_some() => ExpressionType::StatementOperatorBinary,
             _ => ExpressionType::OperatorNary,
         };
         return Some(Expression {
