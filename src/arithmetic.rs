@@ -123,9 +123,28 @@ impl exp::Expression {
             exp_type: ExpressionType::StatementOperatorBinary,
         })
     }
-
     
-    // pub fn generate_equation_at(addr: exp::Address) -> 
+    fn generate_expr_from_train_sub_address(&self, sub_address : usize) -> Option<Expression> {
+        if !self.is_arithmetic_train_operator() { return None; }
+        if sub_address+1 >= self.children.as_ref().unwrap().len() { return None; }
+        let lhs = self.children.as_ref().unwrap()[sub_address].clone();
+        let rhs = self.children.as_ref().unwrap()[sub_address+1].clone();
+        return Some(Expression {
+            symbol: self.symbol.clone(),
+            children: Some(vec![lhs, rhs]),
+            exp_type: ExpressionType::OperatorBinary,
+        });
+    }
+    
+    pub fn generate_simple_artithmetic_equation_at(&self, addr: exp::Address, sub_address : Option<usize>) -> Option<Expression> {
+        let target = self.at(addr)?;
+        if let Some(sub_address) = sub_address {
+            let expr = target.generate_expr_from_train_sub_address(sub_address)?;
+            return expr.generate_simple_arithmetic_equation();
+        } else {
+            return target.generate_simple_arithmetic_equation();
+        };
+    }
 
     /// Calculate the value of the expression if it is an arithmetic operation
     pub fn calculate_numeric(&self) -> Option<f64> {

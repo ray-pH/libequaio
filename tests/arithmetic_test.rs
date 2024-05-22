@@ -50,6 +50,22 @@ mod generate_equation {
         assert_eq!(eq.clone().children.unwrap()[1].symbol, "3");
         assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
     }
+    
+    #[test]
+    fn generate_from_simple_address() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("*(+(1,2),3)", ctx).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(vec![0], None).unwrap();
+        assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
+    }
+    
+    #[test]
+    fn generate_from_train() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("*(+(1,2,3,4,5),3)", ctx).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(vec![0], Some(2)).unwrap();
+        assert_eq!(eq.to_string(true), "((3 + 4) = 7)");
+    }
 }
 
 #[cfg(test)]
