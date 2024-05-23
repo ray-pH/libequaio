@@ -9,6 +9,14 @@ pub enum ExpressionType {
     ValueConst,
     ValueVar,
     StatementOperatorBinary,
+    // `AssocTrain` is a special type for *associative* binary operators
+    // this is introduced because when representing expression as a tree,
+    // the associative binary operator train can be represented in multiple ways
+    // ex : `a + b + c + d` can be represented as `((a + b) + c) + d` or `a + ((b + c) + d)`
+    // the value of the expression is the same, but the structure is different
+    // it's hard to go from the first representation to the second one, or vice versa
+    // it requires a lot of application of the associative property
+    AssocTrain, 
 }
 
 pub enum StatementSymbols {
@@ -42,6 +50,7 @@ pub struct Context {
     pub parameters: Vec<String>,
     pub unary_ops: Vec<String>,
     pub binary_ops: Vec<String>,
+    pub assoc_ops: Vec<String>,
     // the rest of the symbols will be considered as n-ary operators (functions)
     pub handle_numerics: bool,
 }
@@ -69,7 +78,15 @@ impl Expression {
         match self.exp_type {
             ExpressionType::OperatorUnary | 
             ExpressionType::OperatorBinary | 
-            ExpressionType::OperatorNary => true,
+            ExpressionType::OperatorNary |
+            ExpressionType::StatementOperatorBinary |
+            ExpressionType::AssocTrain => true,
+            _ => false,
+        }
+    }
+    pub fn is_assoc_train(&self) -> bool {
+        match self.exp_type {
+            ExpressionType::AssocTrain => true,
             _ => false,
         }
     }
@@ -84,6 +101,14 @@ impl Expression {
         match self.exp_type {
             ExpressionType::StatementOperatorBinary => true,
             _ => false,
+        }
+    }
+    pub fn identify_statement_operator(&self) -> Option<StatementSymbols> {
+        if !self.is_statement() { return None; }
+        let symbol = self.symbol.as_str();
+        match StatementSymbols::from_str(symbol) {
+            Some(s) => Some(s),
+            None => None,
         }
     }
 
@@ -123,6 +148,20 @@ impl Expression {
                 result.push_str(")");
                 result
             },
+            ExpressionType::AssocTrain => {
+                let mut result = String::new();
+                if parentheses { result.push_str("(") };
+                for (i, c) in self.children.as_ref().unwrap().iter().enumerate() {
+                    if i > 0 { 
+                        result.push_str(" ");
+                        result.push_str(&self.symbol);
+                        result.push_str(" ");
+                    }
+                    result.push_str(&c.to_string(parentheses));
+                }
+                if parentheses { result.push_str(")") };
+                result
+            },
         }
     }
 
@@ -134,26 +173,54 @@ impl Expression {
         if index >= self.children.as_ref().unwrap().len() { return None; }
         self.children.as_ref().unwrap()[index].at(address[1..].to_vec())
     }
+    
+    pub fn generate_subexpr_from_train(&self, sub_address: usize) -> Option<Expression> {
+        if !self.is_assoc_train() { return None; }
+        let children = self.children.as_ref().unwrap();
+        let children_len = children.len();
+        if sub_address+1 >= children_len { return None; }
+        let lhs = children[sub_address].clone();
+        let rhs = children[sub_address+1].clone();
+        return Some(Expression{
+            exp_type: ExpressionType::OperatorBinary,
+            symbol: self.symbol.clone(),
+            children: Some(vec![lhs, rhs]),
+        });
+    }
 
     pub fn get_pattern_matches(&self, pattern : &Expression) -> Vec<(Address,MatchMap)> {
-        self.f_get_patten_matches(pattern, Vec::new())
+        self.f_get_patten_matches(pattern, Vec::new(), true)
     }
 
     /// Try to match the pattern expression with this expression, and all its children.
     /// Returns a list of maps, where each map represents a match.
-    fn f_get_patten_matches(&self, pattern : &Expression, current_address : Address) -> Vec<(Address,MatchMap)> {
+    fn f_get_patten_matches(&self, pattern : &Expression, current_address : Address, check_children : bool) -> Vec<(Address,MatchMap)> {
         let mut result = Vec::new();
 
         // try to match the root node
         let root_map = self.patten_match_this_node(pattern);
         if let Some(map) = root_map { result.push((current_address.clone(), map)); }
+        
+        // try to match the subexpression (if is a train)
+        if self.is_assoc_train() {
+            for i in 0..self.children.as_ref().unwrap().len()-1 {
+                let subexpr = self.generate_subexpr_from_train(i);
+                if let Some(sub) = subexpr {
+                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone(), false);
+                    sub_matches.iter().for_each(|m| {
+                        result.push(m.clone());
+                    });
+                }
+            }
+        }
 
         // try to match the children
-        if let Some(children) = &self.children {
+        if check_children && self.children.is_some() {
+            let children = self.children.as_ref().unwrap();
             for (i,c) in children.iter().enumerate() {
                 let mut child_address = current_address.clone();
                 child_address.push(i);
-                let child_matches = c.f_get_patten_matches(pattern, child_address);
+                let child_matches = c.f_get_patten_matches(pattern, child_address, true);
                 // push the child matches to the result
                 child_matches.iter().for_each(|m| {
                     result.push(m.clone());
@@ -161,7 +228,7 @@ impl Expression {
             }
         }
 
-        result
+        return result;
     }
 
     /// Try to match the pattern expression with this expression. (match the root node)
@@ -207,6 +274,9 @@ impl Expression {
                 }
                 Some(map)
             },
+            AssocTrain => {
+              todo!()
+            }
         }
     }
     

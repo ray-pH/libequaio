@@ -33,6 +33,10 @@ mod calculation {
     fn addition_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(1,2,3,4)", ctx).unwrap();
+        assert!(match expr.identify_arithmetic_operator() {
+          Some(arithmetic::ArithmeticOperator::AddTrain) => true,
+          _ => false,
+        });
         let value = expr.calculate_numeric();
         assert_eq!(value.unwrap(), 10.0);
     }

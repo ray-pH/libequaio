@@ -21,11 +21,32 @@ mod basic {
             parameters: vec_strings!["a", "b", "c"],
             unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings![],
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("=(a,+(b,c))", ctx.clone()).unwrap();
         assert_eq!(expr.to_string(true), "(a = (b + c))");
         assert!(expr.is_statement());
+    }
+    
+    #[test]
+    fn generate_subexpr_from_train() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings!["+"],
+            handle_numerics: false,
+        };
+        let expr = parser_prefix::to_expression("+(a,b,c)", ctx.clone()).unwrap();
+        let subexpr0 = expr.generate_subexpr_from_train(0).unwrap();
+        let target0 = parser_prefix::to_expression("+(a,b)", ctx.clone()).unwrap();
+        assert_eq!(subexpr0, target0);
+        // assert_eq!(subexpr0.to_string(true), target0.to_string(true));
+        let subexpr1 = expr.generate_subexpr_from_train(1).unwrap();
+        let target1 = parser_prefix::to_expression("+(b,c)", ctx.clone()).unwrap();
+        assert_eq!(subexpr1, target1);
+        // assert_eq!(subexpr1.to_string(true), target1.to_string(true));
     }
 }
 
@@ -35,15 +56,16 @@ mod pattern_matching {
 
     fn expr_pattern_match(expr : &str, pattern : &str) -> Vec<(exp::Address,exp::MatchMap)> {
         let ctx = exp::Context {
-            parameters: vec_strings!["x", "y"],
+            parameters: vec_strings!["x", "y", "z", "a"],
             unary_ops: vec_strings!["+", "-"],
             binary_ops: vec_strings!["+", "-", "*", "/"],
+            assoc_ops: vec_strings!["+", "*"],
             handle_numerics: true,
         };
         let expr = parser_prefix::to_expression(expr, ctx.clone()).unwrap();
         let pattern = parser_prefix::to_expression(pattern, ctx.clone()).unwrap();
         println!("matching {} with {}", expr.to_string(true), pattern.to_string(true));
-        expr.get_pattern_matches(&pattern)
+        return expr.get_pattern_matches(&pattern);
     }
 
     #[test]
@@ -89,6 +111,52 @@ mod pattern_matching {
         assert_eq!(map0.len(), 1);
         assert_eq!(map0.get("B").unwrap().to_string(true), "f(2, 4)");
     }
+    
+    #[test]
+    fn on_assoc_train() {
+        let matches = expr_pattern_match("+(x,y,z)", "+(A,B)");
+        print_matches(matches.clone());
+        // make sure we have two matches
+        assert_eq!(matches.len(), 2);
+        
+        let (address0, map0) = &matches[0];
+        assert_eq!(address0.len(), 0);
+        assert_eq!(map0.len(), 2);
+        assert_eq!(map0.get("A").unwrap().to_string(true), "x");
+        assert_eq!(map0.get("B").unwrap().to_string(true), "y");
+        
+        let (address1, map1) = &matches[1];
+        assert_eq!(address1.len(), 0);
+        assert_eq!(map1.len(), 2);
+        assert_eq!(map1.get("A").unwrap().to_string(true), "y");
+        assert_eq!(map1.get("B").unwrap().to_string(true), "z");
+    }
+    
+    #[test]
+    fn on_assoc_train_deep() {
+        let matches = expr_pattern_match("+(x,y,+(z,a))", "+(A,B)");
+        print_matches(matches.clone());
+        // make sure we have two matches
+        assert_eq!(matches.len(), 3);
+        
+        let (address0, map0) = &matches[0];
+        assert_eq!(address0.len(), 0);
+        assert_eq!(map0.len(), 2);
+        assert_eq!(map0.get("A").unwrap().to_string(true), "x");
+        assert_eq!(map0.get("B").unwrap().to_string(true), "y");
+        
+        let (address1, map1) = &matches[1];
+        assert_eq!(address1.len(), 0);
+        assert_eq!(map1.len(), 2);
+        assert_eq!(map1.get("A").unwrap().to_string(true), "y");
+        assert_eq!(map1.get("B").unwrap().to_string(true), "(z + a)");
+        
+        let (address2, map2) = &matches[2];
+        assert_eq!(address2, &vec![2]);
+        assert_eq!(map2.len(), 2);
+        assert_eq!(map2.get("A").unwrap().to_string(true), "z");
+        assert_eq!(map2.get("B").unwrap().to_string(true), "a");
+    }
 
 }
 
@@ -102,6 +170,7 @@ mod expression_replacement {
             parameters: vec_strings!["a", "b", "c"],
             unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings![],
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("+(a,+(b,c))", ctx.clone()).unwrap();

@@ -8,6 +8,7 @@ fn main() {
         parameters: vec_strings!["x", "y"],
         unary_ops: vec_strings!["+", "-"],
         binary_ops: vec_strings!["+", "-", "*", "/"],
+        assoc_ops: vec_strings!["+", "*"],
         handle_numerics: true,
     };
     let expr = parser_prefix::to_expression(str, ctx.clone()).unwrap();

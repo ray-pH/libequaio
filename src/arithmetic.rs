@@ -33,6 +33,7 @@ pub fn get_arithmetic_ctx() -> exp::Context {
         // unary_ops:  vec![Negative.to_string(), Reciprocal.to_string()],
         unary_ops:  vec![Negative.to_string()],
         binary_ops: vec![Add.to_string(), Sub.to_string(), Mul.to_string(), Div.to_string()],
+        assoc_ops: vec![Add.to_string(), Mul.to_string()],
         handle_numerics: true,
     }
 }
@@ -42,25 +43,29 @@ impl exp::Expression {
         if !self.is_operator() { return None; }
         let symbol = self.symbol.as_str();
         let children_len = self.children.as_ref().map(|c| c.len()).unwrap_or(0);
-        match children_len {
-            0 => None,
-            1 => match symbol {
-                "-" => Some(ArithmeticOperator::Negative),
-                // "/" => Some(ArithmeticOperator::Reciprocal),
-                _ => None,
-            },
-            2 => match symbol {
-                "+" => Some(ArithmeticOperator::Add),
-                "-" => Some(ArithmeticOperator::Sub),
-                "*" => Some(ArithmeticOperator::Mul),
-                "/" => Some(ArithmeticOperator::Div),
-                _ => None,
-            },
-            _ => match symbol {
+        if self.is_assoc_train() {
+            return match symbol {
                 "+" => Some(ArithmeticOperator::AddTrain),
                 "*" => Some(ArithmeticOperator::MulTrain),
                 _ => None,
-            },
+            }
+        } else {
+          return match children_len {
+              0 => None,
+              1 => match symbol {
+                  "-" => Some(ArithmeticOperator::Negative),
+                  // "/" => Some(ArithmeticOperator::Reciprocal),
+                  _ => None,
+              },
+              2 => match symbol {
+                  "+" => Some(ArithmeticOperator::Add),
+                  "-" => Some(ArithmeticOperator::Sub),
+                  "*" => Some(ArithmeticOperator::Mul),
+                  "/" => Some(ArithmeticOperator::Div),
+                  _ => None,
+              },
+              _ => None,
+          }
         }
     }
     
