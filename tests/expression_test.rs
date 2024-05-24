@@ -141,18 +141,21 @@ mod pattern_matching {
         
         let (address0, map0) = &matches[0];
         assert_eq!(address0.path.len(), 0);
+        assert_eq!(address0.sub, Some(0));
         assert_eq!(map0.len(), 2);
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "y");
         
         let (address1, map1) = &matches[1];
         assert_eq!(address1.path.len(), 0);
+        assert_eq!(address1.sub, Some(1));
         assert_eq!(map1.len(), 2);
         assert_eq!(map1.get("A").unwrap().to_string(true), "y");
         assert_eq!(map1.get("B").unwrap().to_string(true), "(z + a)");
         
         let (address2, map2) = &matches[2];
         assert_eq!(address2.path, vec![2]);
+        assert_eq!(address2.sub, None);
         assert_eq!(map2.len(), 2);
         assert_eq!(map2.get("A").unwrap().to_string(true), "z");
         assert_eq!(map2.get("B").unwrap().to_string(true), "a");
@@ -180,5 +183,26 @@ mod expression_replacement {
         
         let new_expr2 = expr.replace_expression_at(expr_as_replacement, exp::Address::new(vec![1,1], None));
         assert_eq!(new_expr2.unwrap().to_string(true),"(a + (b + (b * c)))");
+    }
+    
+    #[test]
+    fn replace_expression_on_train() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d", "e"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            handle_numerics: false,
+        };
+        let expr = parser_prefix::to_expression("+(a,b,c)", ctx.clone()).unwrap();
+        let expr_as_replacement = parser_prefix::to_expression("*(d,e)", ctx.clone()).unwrap();
+        let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(0))).unwrap();
+        assert_eq!(new_expr0.to_string(true),"((d * e) + c)");
+        
+        let new_expr1 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(1))).unwrap();
+        assert_eq!(new_expr1.to_string(true),"(a + (d * e))");
+        
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(2)));
+        assert!(new_expr2.is_none());
     }
 }

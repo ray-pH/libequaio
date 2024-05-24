@@ -197,7 +197,9 @@ impl Expression {
 
     /// Get the expression from the address
     pub fn at(&self, address : Address) -> Option<&Expression> {
-        if address.path.len() == 0 { return Some(self); }
+        if address.path.len() == 0 { 
+            return Some(self)
+        }
         if self.children.is_none() { return None; }
         let index = address.path[0];
         if index >= self.children.as_ref().unwrap().len() { return None; }
@@ -236,7 +238,7 @@ impl Expression {
             for i in 0..self.children.as_ref().unwrap().len()-1 {
                 let subexpr = self.generate_subexpr_from_train(i);
                 if let Some(sub) = subexpr {
-                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone(), false);
+                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone().set_sub(i), false);
                     sub_matches.iter().for_each(|m| {
                         result.push(m.clone());
                     });
@@ -311,7 +313,11 @@ impl Expression {
     
     /// Create a new expression by replacing the expression at the address with the new expression
     pub fn replace_expression_at(&self, new_expr : Expression, addr : Address) -> Option<Expression> {
-        if addr.path.len() == 0 { return Some(new_expr); }
+        if addr.path.len() == 0 { 
+            if addr.sub.is_none() { return Some(new_expr);  }
+            if !self.is_assoc_train() { return None; }
+            return self.replace_expression_at_train(new_expr, addr.sub.unwrap());
+        }
         if self.children.is_none() { return None; }
         if addr.head() >= self.children.as_ref().unwrap().len() { return None; }
         else {
@@ -325,5 +331,18 @@ impl Expression {
                 children : Some(new_children),
             });
         }
+    }
+    
+    fn replace_expression_at_train(&self, new_expr : Expression, sub_address: usize) -> Option<Expression> {
+        if !self.is_assoc_train() { return None; }
+        let children = self.children.as_ref().unwrap();
+        if sub_address >= children.len()-1 { return None; }
+        let left_children = children[0..sub_address].to_vec();
+        let right_children = children[sub_address+2..children.len()].to_vec();
+        return Some(Expression {
+            exp_type : self.exp_type.clone(),
+            symbol : self.symbol.clone(),
+            children : Some([left_children, vec![new_expr], right_children].concat()),
+        });
     }
 }
