@@ -1,5 +1,6 @@
 use equaio::parser_prefix;
 use equaio::arithmetic;
+use equaio::expression::Address;
 
 #[cfg(test)]
 mod calculation {
@@ -59,7 +60,7 @@ mod generate_equation {
     fn generate_from_simple_address() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("*(+(1,2),3)", ctx).unwrap();
-        let eq = expr.generate_simple_artithmetic_equation_at(vec![0], None).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(Address::new(vec![0], None)).unwrap();
         assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
     }
     
@@ -67,7 +68,7 @@ mod generate_equation {
     fn generate_from_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("*(+(1,2,3,4,5),3)", ctx).unwrap();
-        let eq = expr.generate_simple_artithmetic_equation_at(vec![0], Some(2)).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(Address::new(vec![0], Some(2))).unwrap();
         assert_eq!(eq.to_string(true), "((3 + 4) = 7)");
     }
 }
@@ -81,8 +82,8 @@ mod normalization {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(-(-(1),0),+(-(2),3))", ctx).unwrap();
         let normalized_expr = expr.handle_negative_unary_on_numerics();
-        assert_eq!(normalized_expr.at(vec![0,0]).unwrap().symbol, "-1");
-        assert_eq!(normalized_expr.at(vec![1,0]).unwrap().symbol, "-2");
+        assert_eq!(normalized_expr.at(Address::new(vec![0,0], None)).unwrap().symbol, "-1");
+        assert_eq!(normalized_expr.at(Address::new(vec![1,0], None)).unwrap().symbol, "-2");
         assert_eq!(expr.to_string(true), "(((-1) - 0) + ((-2) + 3))");
         assert_eq!(normalized_expr.to_string(true), "((-1 - 0) + (-2 + 3))");
     }

@@ -70,7 +70,37 @@ impl Context {
     }
 }
 
-pub type Address  = Vec<usize>;
+
+#[derive(Clone)]
+pub struct Address {
+    pub path: Vec<usize>,
+    pub sub: Option<usize>, // sub if for addressing subexpression in AssocTrain
+}
+
+impl Address {
+    pub fn empty() -> Self {
+        return Address { path: vec![], sub: None };
+    }
+    pub fn new(path : Vec<usize>, sub : Option<usize>) -> Self {
+        return Address { path, sub };
+    }
+    pub fn append(&self, val : usize) -> Self {
+        let mut new_path = self.path.clone();
+        new_path.push(val);
+        return Address { path: new_path, sub: self.sub };
+    }
+    pub fn set_sub(&self, val : usize) -> Self {
+        return Address { path: self.path.clone(), sub: Some(val) };
+    }
+    pub fn tail(&self) -> Self {
+        return Address { path: self.path[1..].to_vec(), sub: self.sub };
+    }
+    pub fn head(&self) -> usize {
+        return self.path[0];
+    }
+}
+
+
 pub type MatchMap = HashMap<String,Expression>;
 
 impl Expression {
@@ -167,11 +197,11 @@ impl Expression {
 
     /// Get the expression from the address
     pub fn at(&self, address : Address) -> Option<&Expression> {
-        if address.len() == 0 { return Some(self); }
+        if address.path.len() == 0 { return Some(self); }
         if self.children.is_none() { return None; }
-        let index = address[0];
+        let index = address.path[0];
         if index >= self.children.as_ref().unwrap().len() { return None; }
-        self.children.as_ref().unwrap()[index].at(address[1..].to_vec())
+        return self.children.as_ref().unwrap()[index].at(address.tail());
     }
     
     pub fn generate_subexpr_from_train(&self, sub_address: usize) -> Option<Expression> {
@@ -189,7 +219,7 @@ impl Expression {
     }
 
     pub fn get_pattern_matches(&self, pattern : &Expression) -> Vec<(Address,MatchMap)> {
-        self.f_get_patten_matches(pattern, Vec::new(), true)
+        self.f_get_patten_matches(pattern, Address::empty(), true)
     }
 
     /// Try to match the pattern expression with this expression, and all its children.
@@ -218,8 +248,7 @@ impl Expression {
         if check_children && self.children.is_some() {
             let children = self.children.as_ref().unwrap();
             for (i,c) in children.iter().enumerate() {
-                let mut child_address = current_address.clone();
-                child_address.push(i);
+                let child_address = current_address.append(i);
                 let child_matches = c.f_get_patten_matches(pattern, child_address, true);
                 // push the child matches to the result
                 child_matches.iter().for_each(|m| {
@@ -282,14 +311,14 @@ impl Expression {
     
     /// Create a new expression by replacing the expression at the address with the new expression
     pub fn replace_expression_at(&self, new_expr : Expression, addr : Address) -> Option<Expression> {
-        if addr.len() == 0 { return Some(new_expr); }
+        if addr.path.len() == 0 { return Some(new_expr); }
         if self.children.is_none() { return None; }
-        if addr[0] >= self.children.as_ref().unwrap().len() { return None; }
+        if addr.head() >= self.children.as_ref().unwrap().len() { return None; }
         else {
-            let new_child = self.children.as_ref().unwrap()[addr[0]]
-                .replace_expression_at(new_expr, addr[1..].to_vec())?;
+            let new_child = self.children.as_ref().unwrap()[addr.head()]
+                .replace_expression_at(new_expr, addr.tail())?;
             let mut new_children = self.children.as_ref().unwrap().clone();
-            new_children[addr[0]] = new_child;
+            new_children[addr.head()] = new_child;
             return Some(Expression {
                 exp_type : self.exp_type.clone(),
                 symbol : self.symbol.clone(),
