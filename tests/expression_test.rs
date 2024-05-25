@@ -53,6 +53,45 @@ mod basic {
 #[cfg(test)]
 mod pattern_matching {
     use super::*;
+    
+    #[test]
+    fn pattern_match_at_node() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: true,
+        };
+        let expr = parser_prefix::to_expression("+(x,y)", ctx.clone()).unwrap();
+        let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
+        let map = expr.pattern_match_this_node(&pattern).unwrap();
+        assert_eq!(map.get("A").unwrap().to_string(true), "x");
+        assert_eq!(map.get("B").unwrap().to_string(true), "y");
+    }
+    
+    #[test]
+    fn pattern_match_at_address() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y", "z"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: true,
+        };
+        let expr = parser_prefix::to_expression("+(x,+(y,z))", ctx.clone()).unwrap();
+        let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
+        
+        let map0 = expr.pattern_match_at(&pattern, exp::Address::new(vec![], None)).unwrap();
+        assert_eq!(map0.get("A").unwrap().to_string(true), "x");
+        assert_eq!(map0.get("B").unwrap().to_string(true), "(y + z)");
+        let map1 = expr.pattern_match_at(&pattern, exp::Address::new(vec![0], None));
+        assert!(map1.is_none());
+        let map2 = expr.pattern_match_at(&pattern, exp::Address::new(vec![1], None)).unwrap();
+        assert_eq!(map2.get("A").unwrap().to_string(true), "y");
+        assert_eq!(map2.get("B").unwrap().to_string(true), "z");
+    }
+    
 
     fn expr_pattern_match(expr : &str, pattern : &str) -> Vec<(exp::Address,exp::MatchMap)> {
         let ctx = exp::Context {

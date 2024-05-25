@@ -221,20 +221,20 @@ impl Expression {
     }
 
     pub fn get_pattern_matches(&self, pattern : &Expression) -> Vec<(Address,MatchMap)> {
-        self.f_get_patten_matches(pattern, Address::empty(), true)
+        return self.f_get_patten_matches(pattern, Address::empty(), true);
     }
-
+    
     /// Try to match the pattern expression with this expression, and all its children.
     /// Returns a list of maps, where each map represents a match.
     fn f_get_patten_matches(&self, pattern : &Expression, current_address : Address, check_children : bool) -> Vec<(Address,MatchMap)> {
         let mut result = Vec::new();
 
         // try to match the root node
-        let root_map = self.patten_match_this_node(pattern);
+        let root_map = self.pattern_match_this_node(pattern);
         if let Some(map) = root_map { result.push((current_address.clone(), map)); }
         
         // try to match the subexpression (if is a train)
-        if self.is_assoc_train() {
+        if check_children && self.is_assoc_train() {
             for i in 0..self.children.as_ref().unwrap().len()-1 {
                 let subexpr = self.generate_subexpr_from_train(i);
                 if let Some(sub) = subexpr {
@@ -261,10 +261,22 @@ impl Expression {
 
         return result;
     }
+    
+    /// Try to match the pattern expression with expression at the given address
+    pub fn pattern_match_at(&self, pattern : &Expression, addr : Address) -> Option<MatchMap> {
+        let curr_node = self.at(addr.clone())?;
+        if let Some(sub_addr) = addr.sub {
+            let sub_expr = curr_node.generate_subexpr_from_train(sub_addr)?;
+            return sub_expr.pattern_match_this_node(pattern);
+        } else {
+            return curr_node.pattern_match_this_node(pattern);
+        }
+    }
+
 
     /// Try to match the pattern expression with this expression. (match the root node)
     /// Returns a map of the symbols, or None if there is the pattern does not match.
-    pub fn patten_match_this_node(&self, pattern : &Expression) -> Option<MatchMap> {
+    pub fn pattern_match_this_node(&self, pattern : &Expression) -> Option<MatchMap> {
         use ExpressionType::*;
         match pattern.exp_type {
             // if the pattern is a constant parameter, then it must match exactly with this expression
@@ -296,7 +308,7 @@ impl Expression {
                 // pattern match each child
                 let mut map = HashMap::new();
                 for i in 0..self_children.len() {
-                    let child_map = self_children[i].patten_match_this_node(&pattern_children[i]);
+                    let child_map = self_children[i].pattern_match_this_node(&pattern_children[i]);
                     if child_map.is_none() { return None; }
                     // invalid if the child maps clash
                     if !utils::is_hashmap_no_clash(&map, &child_map.clone().unwrap()) { return None; }
