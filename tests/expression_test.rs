@@ -44,11 +44,9 @@ mod basic {
         let subexpr0 = expr.generate_subexpr_from_train(0).unwrap();
         let target0 = parser_prefix::to_expression("+(a,b)", ctx.clone()).unwrap();
         assert_eq!(subexpr0, target0);
-        // assert_eq!(subexpr0.to_string(true), target0.to_string(true));
         let subexpr1 = expr.generate_subexpr_from_train(1).unwrap();
         let target1 = parser_prefix::to_expression("+(b,c)", ctx.clone()).unwrap();
         assert_eq!(subexpr1, target1);
-        // assert_eq!(subexpr1.to_string(true), target1.to_string(true));
     }
 }
 
@@ -218,10 +216,10 @@ mod expression_replacement {
         };
         let expr = parser_prefix::to_expression("+(a,+(b,c))", ctx.clone()).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(b,c)", ctx.clone()).unwrap();
-        let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![1], None));
+        let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), address![1]);
         assert_eq!(new_expr.unwrap().to_string(true),"(a + (b * c))");
         
-        let new_expr2 = expr.replace_expression_at(expr_as_replacement, exp::Address::new(vec![1,1], None));
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement, address![1,1]);
         assert_eq!(new_expr2.unwrap().to_string(true),"(a + (b + (b * c)))");
     }
     
@@ -236,13 +234,13 @@ mod expression_replacement {
         };
         let expr = parser_prefix::to_expression("+(a,b,c)", ctx.clone()).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(d,e)", ctx.clone()).unwrap();
-        let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(0))).unwrap();
+        let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(0)).unwrap();
         assert_eq!(new_expr0.to_string(true),"((d * e) + c)");
         
-        let new_expr1 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(1))).unwrap();
+        let new_expr1 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(1)).unwrap();
         assert_eq!(new_expr1.to_string(true),"(a + (d * e))");
         
-        let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(2)));
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(2));
         assert!(new_expr2.is_none());
     }
 }
@@ -323,5 +321,21 @@ mod apply_equation {
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
         let new_expr = expr.apply_equation_rtl_this_node(rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "((a + 0) + 0)");
+    }
+    
+    #[test]
+    fn on_train() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings!["+"],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("+(a,b,0)", ctx.clone()).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let new_expr = expr.apply_equation_at(rule_eq, address![].sub(1)).unwrap();
+        assert_eq!(new_expr.to_string(true), "(a + b)");
     }
 }

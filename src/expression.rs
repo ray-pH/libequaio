@@ -441,23 +441,15 @@ impl Expression {
         return self.apply_equation_ltr_at(equation.flip_equation(), addr);
     }
     pub fn apply_equation_ltr_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
-        if addr.path.len() == 0 {
-            if addr.sub.is_none() { return self.apply_equation_ltr_this_node(equation); }
-            return None;
-            // TODO: do something with AssocTrain
-            // if !self.is_assoc_train() { return None; }
-            // return self.apply_equation_ltr_at_train(equation, addr.sub.unwrap());
+        let expr = self.at(addr.clone())?;
+        if addr.sub.is_none() {
+            let new_expr = expr.apply_equation_this_node(equation)?;
+            return self.replace_expression_at(new_expr, addr);
+        } else {
+            // AssocTrain
+            let subexpr = expr.generate_subexpr_from_train(addr.sub.unwrap())?;
+            let new_expr = subexpr.apply_equation_this_node(equation)?;
+            return self.replace_expression_at(new_expr, addr);
         }
-        // traverse the children
-        let children = self.children.as_ref()?;
-        if addr.head() >= children.len() { return None; }
-        let new_child = children[addr.head()].apply_equation_ltr_at(equation, addr.tail())?;
-        let mut new_children = children.clone();
-        new_children[addr.head()] = new_child;
-        return Some(Expression {
-            exp_type : self.exp_type.clone(),
-            symbol : self.symbol.clone(),
-            children : Some(new_children),
-        });
     }
 }

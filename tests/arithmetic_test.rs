@@ -111,4 +111,22 @@ mod simplification {
         let expr = expr.apply_equation_at(equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "6");
     }
+    
+    #[test]
+    fn on_train() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("+(1,2,3)", ctx).unwrap();
+        
+        let action_addr = address![].sub(0);
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        assert_eq!(equation.to_string(true), "((1 + 2) = 3)");
+        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        assert_eq!(expr.to_string(true), "(3 + 3)");
+        
+        let action_addr = address![];
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        assert_eq!(equation.to_string(true), "((3 + 3) = 6)");
+        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        assert_eq!(expr.to_string(true), "6");
+    }
 }
