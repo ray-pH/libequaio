@@ -1,4 +1,5 @@
 use equaio::expression as exp;
+use equaio::expression::Address;
 use equaio::vec_strings;
 use equaio::parser_prefix;
 
@@ -52,6 +53,8 @@ mod basic {
 
 #[cfg(test)]
 mod pattern_matching {
+    use equaio::address;
+
     use super::*;
     
     #[test]
@@ -82,12 +85,12 @@ mod pattern_matching {
         let expr = parser_prefix::to_expression("+(x,+(y,z))", ctx.clone()).unwrap();
         let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
         
-        let map0 = expr.pattern_match_at(&pattern, exp::Address::new(vec![], None)).unwrap();
+        let map0 = expr.pattern_match_at(&pattern, address![]).unwrap();
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "(y + z)");
-        let map1 = expr.pattern_match_at(&pattern, exp::Address::new(vec![0], None));
+        let map1 = expr.pattern_match_at(&pattern, address![0]);
         assert!(map1.is_none());
-        let map2 = expr.pattern_match_at(&pattern, exp::Address::new(vec![1], None)).unwrap();
+        let map2 = expr.pattern_match_at(&pattern, address![1]).unwrap();
         assert_eq!(map2.get("A").unwrap().to_string(true), "y");
         assert_eq!(map2.get("B").unwrap().to_string(true), "z");
     }
@@ -116,7 +119,7 @@ mod pattern_matching {
         // make sure in the match we have the correct values
         // A -> x, B -> y
         let (address, map) = &matches[0];
-        assert_eq!(address.path.len(), 0);
+        assert_eq!(address, &address![]);
         assert_eq!(map.len(), 2);
         assert_eq!(map.get("A").unwrap().to_string(true), "x");
         assert_eq!(map.get("B").unwrap().to_string(true), "y");
@@ -128,13 +131,13 @@ mod pattern_matching {
         print_matches(matches.clone());
         assert_eq!(matches.len(), 2);
         let (address0, map0) = &matches[0];
-        assert_eq!(address0.path.len(), 0);
+        assert_eq!(address0, &address![]);
         assert_eq!(map0.len(), 2);
         assert_eq!(map0.get("A").unwrap().to_string(true), "0");
         assert_eq!(map0.get("B").unwrap().to_string(true), "(x + f(2, 4))");
 
         let (address1, map1) = &matches[1];
-        assert_eq!(address1.path, vec![1]);
+        assert_eq!(address1, &address![1]);
         assert_eq!(map1.len(), 2);
         assert_eq!(map1.get("A").unwrap().to_string(true), "x");
         assert_eq!(map1.get("B").unwrap().to_string(true), "f(2, 4)");
@@ -146,7 +149,7 @@ mod pattern_matching {
         print_matches(matches.clone());
         assert_eq!(matches.len(), 1);
         let (address0, map0) = &matches[0];
-        assert_eq!(address0.path, vec![1]);
+        assert_eq!(address0, &address![1]);
         assert_eq!(map0.len(), 1);
         assert_eq!(map0.get("B").unwrap().to_string(true), "f(2, 4)");
     }
@@ -159,13 +162,13 @@ mod pattern_matching {
         assert_eq!(matches.len(), 2);
         
         let (address0, map0) = &matches[0];
-        assert_eq!(address0.path.len(), 0);
+        assert_eq!(address0, &address![].sub(0));
         assert_eq!(map0.len(), 2);
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "y");
         
         let (address1, map1) = &matches[1];
-        assert_eq!(address1.path.len(), 0);
+        assert_eq!(address1, &address![].sub(1));
         assert_eq!(map1.len(), 2);
         assert_eq!(map1.get("A").unwrap().to_string(true), "y");
         assert_eq!(map1.get("B").unwrap().to_string(true), "z");
@@ -179,22 +182,19 @@ mod pattern_matching {
         assert_eq!(matches.len(), 3);
         
         let (address0, map0) = &matches[0];
-        assert_eq!(address0.path.len(), 0);
-        assert_eq!(address0.sub, Some(0));
+        assert_eq!(address0, &address![].sub(0));
         assert_eq!(map0.len(), 2);
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "y");
         
         let (address1, map1) = &matches[1];
-        assert_eq!(address1.path.len(), 0);
-        assert_eq!(address1.sub, Some(1));
+        assert_eq!(address1, &address![].sub(1));
         assert_eq!(map1.len(), 2);
         assert_eq!(map1.get("A").unwrap().to_string(true), "y");
         assert_eq!(map1.get("B").unwrap().to_string(true), "(z + a)");
         
         let (address2, map2) = &matches[2];
-        assert_eq!(address2.path, vec![2]);
-        assert_eq!(address2.sub, None);
+        assert_eq!(address2, &address![2]);
         assert_eq!(map2.len(), 2);
         assert_eq!(map2.get("A").unwrap().to_string(true), "z");
         assert_eq!(map2.get("B").unwrap().to_string(true), "a");

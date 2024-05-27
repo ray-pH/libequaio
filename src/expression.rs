@@ -71,7 +71,7 @@ impl Context {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone,Debug, PartialEq)]
 pub struct Address {
     pub path: Vec<usize>,
     pub sub: Option<usize>, // sub if for addressing subexpression in AssocTrain
@@ -89,7 +89,7 @@ impl Address {
         new_path.push(val);
         return Address { path: new_path, sub: self.sub };
     }
-    pub fn set_sub(&self, val : usize) -> Self {
+    pub fn sub(&self, val : usize) -> Self {
         return Address { path: self.path.clone(), sub: Some(val) };
     }
     pub fn tail(&self) -> Self {
@@ -99,6 +99,14 @@ impl Address {
         return self.path[0];
     }
 }
+
+#[macro_export]
+macro_rules! address {
+    ($($elem:expr),*) => {
+        Address::new(vec![$($elem),*], None)
+    };
+}
+
 
 
 pub type MatchMap = HashMap<String,Expression>;
@@ -238,7 +246,7 @@ impl Expression {
             for i in 0..self.children.as_ref().unwrap().len()-1 {
                 let subexpr = self.generate_subexpr_from_train(i);
                 if let Some(sub) = subexpr {
-                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone().set_sub(i), false);
+                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone().sub(i), false);
                     sub_matches.iter().for_each(|m| {
                         result.push(m.clone());
                     });
