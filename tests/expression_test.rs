@@ -2,6 +2,7 @@ use equaio::expression as exp;
 use equaio::expression::Address;
 use equaio::vec_strings;
 use equaio::parser_prefix;
+use equaio::address;
 
 fn print_matches(matches : Vec<(exp::Address,exp::MatchMap)>) {
     for (address, map) in matches {
@@ -243,5 +244,84 @@ mod expression_replacement {
         
         let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), exp::Address::new(vec![], Some(2)));
         assert!(new_expr2.is_none());
+    }
+}
+
+#[cfg(test)]
+mod apply_equation {
+    use super::*;
+    
+    #[test]
+    fn generate_eq_from_match_map() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let lhs = rule_eq.clone().children.unwrap()[0].clone();
+        let match_map = expr.pattern_match_this_node(&lhs).unwrap();
+        assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
+        let applied_eq = rule_eq.apply_match_map(&match_map);
+        assert_eq!(applied_eq.to_string(true), "((a + 0) = a)");
+        let new_expr = expr.apply_equation_ltr_this_node(applied_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "a");
+    }
+    
+    #[test]
+    fn generate_eq_from_match_map_deep() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("+(+(a,0),b)", ctx.clone()).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let lhs = rule_eq.clone().children.unwrap()[0].clone();
+        let match_map = expr.pattern_match_at(&lhs, address![0]).unwrap();
+        assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
+        let applied_eq = rule_eq.apply_match_map(&match_map);
+        assert_eq!(applied_eq.to_string(true), "((a + 0) = a)");
+        let new_expr = expr.apply_equation_ltr_at(applied_eq, address![0]).unwrap();
+        assert_eq!(new_expr.to_string(true), "(a + b)");
+    }
+    
+    #[test]
+    fn simple_equation() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(rule_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "a");
+    }
+    
+    #[test]
+    fn simple_equation_rtl() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let new_expr = expr.apply_equation_rtl_this_node(rule_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "((a + 0) + 0)");
     }
 }

@@ -107,8 +107,6 @@ macro_rules! address {
     };
 }
 
-
-
 pub type MatchMap = HashMap<String,Expression>;
 
 impl Expression {
@@ -123,10 +121,7 @@ impl Expression {
         }
     }
     pub fn is_assoc_train(&self) -> bool {
-        match self.exp_type {
-            ExpressionType::AssocTrain => true,
-            _ => false,
-        }
+        return self.exp_type == ExpressionType::AssocTrain;
     }
     pub fn is_value(&self) -> bool {
         match self.exp_type {
@@ -135,9 +130,15 @@ impl Expression {
             _ => false,
         }
     }
+    pub fn is_variable(&self) -> bool {
+        return self.exp_type == ExpressionType::ValueVar;
+    }
     pub fn is_statement(&self) -> bool {
-        match self.exp_type {
-            ExpressionType::StatementOperatorBinary => true,
+        return self.exp_type == ExpressionType::StatementOperatorBinary;
+    }
+    pub fn is_equation(&self) -> bool {
+        match self.identify_statement_operator() {
+            Some(StatementSymbols::Equal) => true,
             _ => false,
         }
     }
@@ -148,6 +149,13 @@ impl Expression {
             Some(s) => Some(s),
             None => None,
         }
+    }
+    pub fn is_contain_variable(&self) -> bool {
+        if self.is_variable() { return true; }
+        if self.children.is_none() { return false; }
+        let children = self.children.as_ref().unwrap();
+        // return true if any of the children is a variable
+        return children.iter().any(|c| c.is_contain_variable());
     }
 
     pub fn to_string(&self, parentheses : bool) -> String {
@@ -331,6 +339,27 @@ impl Expression {
         }
     }
     
+    // apply match map to the expression
+    // use case : self is a "rule expression" e.g. X + 0 = X
+    pub fn apply_match_map(&self, match_map : &MatchMap) -> Expression {
+        match self.exp_type {
+            ExpressionType::ValueVar => {
+                if let Some(expr) = match_map.get(&self.symbol) { return expr.clone(); }
+                return self.clone();
+            },
+            _ if self.children.is_some() => {
+                let children = self.children.as_ref().unwrap();
+                let new_children = children.iter().map(|c| c.apply_match_map(match_map)).collect();
+                return Expression {
+                    exp_type: self.exp_type.clone(),
+                    symbol: self.symbol.clone(),
+                    children: Some(new_children)
+                }
+            },
+            _ => return self.clone()
+        }
+    }
+    
     /// Create a new expression by replacing the expression at the address with the new expression
     pub fn replace_expression_at(&self, new_expr : Expression, addr : Address) -> Option<Expression> {
         if addr.path.len() == 0 { 
@@ -363,6 +392,72 @@ impl Expression {
             exp_type : self.exp_type.clone(),
             symbol : self.symbol.clone(),
             children : Some([left_children, vec![new_expr], right_children].concat()),
+        });
+    }
+    
+    pub fn flip_equation(&self) -> Expression {
+        if !self.is_equation() { return self.clone(); }
+        let children = self.children.as_ref().unwrap();
+        let left = children[0].clone();
+        let right = children[1].clone();
+        return Expression {
+            exp_type : self.exp_type.clone(),
+            symbol : self.symbol.clone(),
+            children : Some(vec![right, left]),
+        };
+    }
+    pub fn apply_equation_this_node(&self, equation : Expression) -> Option<Expression> {
+        return self.apply_equation_ltr_this_node(equation);
+    }
+    pub fn apply_equation_rtl_this_node(&self, equation : Expression) -> Option<Expression> {
+        return self.apply_equation_ltr_this_node(equation.flip_equation());
+    }
+    pub fn apply_equation_ltr_this_node(&self, equation : Expression) -> Option<Expression> {
+        if !equation.is_equation() { return None; }
+        
+        let eq_children = equation.children.as_ref().unwrap();
+        let lhs = eq_children[0].clone();
+        
+        if !equation.is_contain_variable() {
+            // if the equation contains no variables (all of the value is parameters)
+            // then the equation must match the current node
+            if !(&lhs == self) {  return None;  }
+            let rhs = eq_children[1].clone();
+            return Some(rhs);
+        } else {
+            // if the equation contains variables (not all of the value is parameters)
+            // try to pattern match and transform the equation first
+            let match_map = self.pattern_match_this_node(&lhs)?;
+            let equation = equation.apply_match_map(&match_map);
+            // if theres still a variable in the equation, then the equation is invalid
+            if equation.is_contain_variable() { return None; }
+            return self.apply_equation_ltr_this_node(equation);
+        }
+    }
+    pub fn apply_equation_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+        return self.apply_equation_ltr_at(equation, addr);
+    }
+    pub fn apply_equation_rtl_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+        return self.apply_equation_ltr_at(equation.flip_equation(), addr);
+    }
+    pub fn apply_equation_ltr_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+        if addr.path.len() == 0 {
+            if addr.sub.is_none() { return self.apply_equation_ltr_this_node(equation); }
+            return None;
+            // TODO: do something with AssocTrain
+            // if !self.is_assoc_train() { return None; }
+            // return self.apply_equation_ltr_at_train(equation, addr.sub.unwrap());
+        }
+        // traverse the children
+        let children = self.children.as_ref()?;
+        if addr.head() >= children.len() { return None; }
+        let new_child = children[addr.head()].apply_equation_ltr_at(equation, addr.tail())?;
+        let mut new_children = children.clone();
+        new_children[addr.head()] = new_child;
+        return Some(Expression {
+            exp_type : self.exp_type.clone(),
+            symbol : self.symbol.clone(),
+            children : Some(new_children),
         });
     }
 }
