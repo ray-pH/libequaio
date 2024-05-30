@@ -21,17 +21,20 @@ pub enum ExpressionType {
 
 pub enum StatementSymbols {
     Equal,
+    Implies,
 }
 impl StatementSymbols {
     pub fn to_string(&self) -> String { self.as_str().into() }
     pub fn as_str(&self) -> &str {
         match self {
             StatementSymbols::Equal => "=",
+            StatementSymbols::Implies => "=>"
         }
     }
     pub fn from_str(s : &str) -> Option<StatementSymbols> {
         match s {
             "=" => Some(StatementSymbols::Equal),
+            "=>" => Some(StatementSymbols::Implies),
             _ => None,
         }
     }
@@ -137,10 +140,10 @@ impl Expression {
         return self.exp_type == ExpressionType::StatementOperatorBinary;
     }
     pub fn is_equation(&self) -> bool {
-        match self.identify_statement_operator() {
-            Some(StatementSymbols::Equal) => true,
-            _ => false,
-        }
+        match self.identify_statement_operator() { Some(StatementSymbols::Equal) => true, _ => false }
+    }
+    pub fn is_implication(&self) -> bool {
+        match self.identify_statement_operator() { Some(StatementSymbols::Implies) => true, _ => false }
     }
     pub fn identify_statement_operator(&self) -> Option<StatementSymbols> {
         if !self.is_statement() { return None; }
@@ -415,11 +418,11 @@ impl Expression {
     pub fn apply_equation_ltr_this_node(&self, equation : Expression) -> Option<Expression> {
         if !equation.is_equation() { return None; }
         
-        let eq_children = equation.children.as_ref().unwrap();
+        let eq_children = equation.children.as_ref()?;
         let lhs = eq_children[0].clone();
         
         if !equation.is_contain_variable() {
-            // if the equation contains no variables (all of the value is parameters)
+            // if the equation contains no variables (all of the values are parameters)
             // then the equation must match the current node
             if !(&lhs == self) {  return None;  }
             let rhs = eq_children[1].clone();
@@ -450,6 +453,29 @@ impl Expression {
             let subexpr = expr.generate_subexpr_from_train(addr.sub.unwrap())?;
             let new_expr = subexpr.apply_equation_this_node(equation)?;
             return self.replace_expression_at(new_expr, addr);
+        }
+    }
+    
+    pub fn apply_implication(&self, implication : Expression) -> Option<Expression>{
+        if !implication.is_implication() { return None; }
+        
+        let impl_children = implication.children.as_ref()?;
+        let lhs = impl_children[0].clone();
+        
+        if !implication.is_contain_variable() {
+            // if the implication contains no variables (all of the values are parameters)
+            // then the implication must match the current node
+            if !(&lhs == self) {  return None;  }
+            let rhs = impl_children[1].clone();
+            return Some(rhs);
+        } else {
+            // if the implication contains variables (not all of the value is parameters)
+            // try to pattern match and transform the implication first
+            let match_map = self.pattern_match_this_node(&lhs)?;
+            let implication = implication.apply_match_map(&match_map);
+            // if theres still a variable in the implication, then the implication is invalid
+            if implication.is_contain_variable() { return None; }
+            return self.apply_implication(implication);
         }
     }
 }

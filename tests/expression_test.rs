@@ -339,3 +339,26 @@ mod apply_equation {
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
 }
+
+#[cfg(test)]
+mod apply_implication {
+    use super::*;
+    
+    #[test]
+    fn simple_implication() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "0"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        
+        let expr = parser_prefix::to_expression("=(+(a,b),a)", ctx.clone()).unwrap();
+        let rule = parser_prefix::to_expression("=>( =(+(X,Y),X), =(Y,0))", ctx.clone()).unwrap();
+        assert_eq!(expr.to_string(true), "((a + b) = a)");
+        assert_eq!(rule.to_string(true), "(((X + Y) = X) => (Y = 0))");
+        let new_expr = expr.apply_implication(rule).unwrap();
+        assert_eq!(new_expr.to_string(true), "(b = 0)");
+    }
+}
