@@ -109,6 +109,25 @@ mod assoc_train_normalization {
         assert_eq!(normalized_expr, target_expr);
     }
     
+    #[test]
+    fn deep1() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("=(+(a,+(b,c)),d)", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("=(+(a,b,c),d)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn deep2() {
+        let ctx = get_ctx();
+        // let expr = parser_prefix::to_expression("=(+(+(1,2),3),4)", &ctx).unwrap();
+        let expr = parser_prefix::to_expression("=(+(+(a,b),c),d)", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("=(+(a,b,c),d)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
 }
 
 #[cfg(test)]

@@ -229,8 +229,16 @@ impl Expression {
     /// ex: ((1 + 2) + 3) -> +(1, 2, 3)
     pub fn normalize_to_assoc_train(&self, assoc_ops: &Vec<String>) -> Expression {
         if self.children.is_none() { return self.clone() }
-        if !assoc_ops.contains(&self.symbol) { return self.clone() }
+        
         let normalized_children = self.children.as_ref().unwrap().iter().map(|c| c.normalize_to_assoc_train(assoc_ops));
+        
+        if !assoc_ops.contains(&self.symbol) { 
+            return Expression {
+                exp_type : self.exp_type.clone(),
+                symbol   : self.symbol.clone(),
+                children : Some(normalized_children.collect()),
+            }
+        }
         
         let mut chidren : Vec<Expression> = Vec::new();
         for normalized_child in normalized_children {
