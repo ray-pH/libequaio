@@ -51,6 +51,67 @@ mod basic {
 }
 
 #[cfg(test)]
+mod assoc_train_normalization {
+    use super::*;
+    
+    fn get_ctx() -> exp::Context {
+        return exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d", "e", "f", "g", "h"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+","*","@"],
+            assoc_ops: vec_strings!["+","@"],
+            handle_numerics: false,
+        };
+    }
+    
+    #[test]
+    fn binary_ops_only() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("+(+(a,b),+(c,d))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("+(a,b,c,d)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn nested_binary_opsy() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("+(+(a,+(b,+(c,d))),+(+(e,f),g))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("+(a,b,c,d,e,f,g)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn from_binary_and_trains() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("+(+(a,b,c),+(d,+(e,f,g)))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("+(a,b,c,d,e,f,g)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn mixed() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("+(+(a,b),c,d,*(e,f),+(g,h))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("+(a,b,c,d,*(e,f),g,h)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn multiple_assoc_op() {
+        let ctx = get_ctx();
+        let expr = parser_prefix::to_expression("+(+(a,b),c,d,@(e,f,@(g,h)))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
+        let target_expr = parser_prefix::to_expression("+(a,b,c,d,@(e,f,g,h))", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+}
+
+#[cfg(test)]
 mod pattern_matching {
     use equaio::address;
 
