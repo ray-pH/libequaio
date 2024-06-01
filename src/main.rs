@@ -11,11 +11,11 @@ fn main() {
         assoc_ops: vec_strings!["+", "*"],
         handle_numerics: true,
     };
-    let expr = parser_prefix::to_expression(str, ctx.clone()).unwrap();
+    let expr = parser_prefix::to_expression(str, &ctx).unwrap();
     println!("{}", expr.to_string(true));
 
-    // let pattren = parser_prefix::to_expression("+(A,f(B,C))".into(), ctx.clone()).unwrap();
-    let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
+    // let pattren = parser_prefix::to_expression("+(A,f(B,C))".into(), &ctx).unwrap();
+    let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
     let matches = expr.get_pattern_matches(&pattern);
     for (address, map) in matches {
         println!("Match at address {:?}:{:?}", address.path, address.sub);

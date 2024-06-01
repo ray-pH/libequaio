@@ -73,7 +73,7 @@ fn split_tokens_by_comma(tokens : &Vec<Token>) -> Vec<Vec<Token>> {
     result
 }
 
-fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expression> {
+fn tokens_to_expression(tokens : &Vec<Token>, ctx : &Context) -> Option<Expression> {
     // first token must be a symbol
     if let Token::Symbol(ref s) = tokens[0] {
         if tokens.len() == 1 {
@@ -99,7 +99,7 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expressio
         let inner_tokens = tokens[2..tokens.len() - 1].to_vec();
         let child_tokens = split_tokens_by_comma(&inner_tokens);
         let children = child_tokens.iter().map(
-            |t| tokens_to_expression(&t,ctx.clone())).collect::<Option<Vec<Expression>>>();
+            |t| tokens_to_expression(&t,ctx)).collect::<Option<Vec<Expression>>>();
         if children.is_none() { return None; }
         let exp_type = match children.as_ref().unwrap().len() {
             1 if ctx.unary_ops.contains(s) => ExpressionType::OperatorUnary,
@@ -117,7 +117,7 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : Context) -> Option<Expressio
     None
 }
 
-pub fn to_expression<T: AsRef<str>>(text : T, ctx : Context) -> Option<Expression> {
+pub fn to_expression<T: AsRef<str>>(text : T, ctx : &Context) -> Option<Expression> {
     let s : String = text.as_ref().to_string();
     tokens_to_expression(&tokenize(s), ctx)
 }

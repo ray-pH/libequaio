@@ -26,7 +26,7 @@ mod basic {
             assoc_ops: vec_strings![],
             handle_numerics: false,
         };
-        let expr = parser_prefix::to_expression("=(a,+(b,c))", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("=(a,+(b,c))", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "(a = (b + c))");
         assert!(expr.is_statement());
     }
@@ -40,12 +40,12 @@ mod basic {
             assoc_ops: vec_strings!["+"],
             handle_numerics: false,
         };
-        let expr = parser_prefix::to_expression("+(a,b,c)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
         let subexpr0 = expr.generate_subexpr_from_train(0).unwrap();
-        let target0 = parser_prefix::to_expression("+(a,b)", ctx.clone()).unwrap();
+        let target0 = parser_prefix::to_expression("+(a,b)", &ctx).unwrap();
         assert_eq!(subexpr0, target0);
         let subexpr1 = expr.generate_subexpr_from_train(1).unwrap();
-        let target1 = parser_prefix::to_expression("+(b,c)", ctx.clone()).unwrap();
+        let target1 = parser_prefix::to_expression("+(b,c)", &ctx).unwrap();
         assert_eq!(subexpr1, target1);
     }
 }
@@ -65,8 +65,8 @@ mod pattern_matching {
             assoc_ops: vec_strings![],
             handle_numerics: true,
         };
-        let expr = parser_prefix::to_expression("+(x,y)", ctx.clone()).unwrap();
-        let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(x,y)", &ctx).unwrap();
+        let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
         let map = expr.pattern_match_this_node(&pattern).unwrap();
         assert_eq!(map.get("A").unwrap().to_string(true), "x");
         assert_eq!(map.get("B").unwrap().to_string(true), "y");
@@ -81,8 +81,8 @@ mod pattern_matching {
             assoc_ops: vec_strings![],
             handle_numerics: true,
         };
-        let expr = parser_prefix::to_expression("+(x,+(y,z))", ctx.clone()).unwrap();
-        let pattern = parser_prefix::to_expression("+(A,B)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(x,+(y,z))", &ctx).unwrap();
+        let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
         
         let map0 = expr.pattern_match_at(&pattern, address![]).unwrap();
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
@@ -103,8 +103,8 @@ mod pattern_matching {
             assoc_ops: vec_strings!["+", "*"],
             handle_numerics: true,
         };
-        let expr = parser_prefix::to_expression(expr, ctx.clone()).unwrap();
-        let pattern = parser_prefix::to_expression(pattern, ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression(expr, &ctx).unwrap();
+        let pattern = parser_prefix::to_expression(pattern, &ctx).unwrap();
         println!("matching {} with {}", expr.to_string(true), pattern.to_string(true));
         return expr.get_pattern_matches(&pattern);
     }
@@ -214,8 +214,8 @@ mod expression_replacement {
             assoc_ops: vec_strings![],
             handle_numerics: false,
         };
-        let expr = parser_prefix::to_expression("+(a,+(b,c))", ctx.clone()).unwrap();
-        let expr_as_replacement = parser_prefix::to_expression("*(b,c)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,+(b,c))", &ctx).unwrap();
+        let expr_as_replacement = parser_prefix::to_expression("*(b,c)", &ctx).unwrap();
         let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), address![1]);
         assert_eq!(new_expr.unwrap().to_string(true),"(a + (b * c))");
         
@@ -232,8 +232,8 @@ mod expression_replacement {
             assoc_ops: vec_strings!["+"],
             handle_numerics: false,
         };
-        let expr = parser_prefix::to_expression("+(a,b,c)", ctx.clone()).unwrap();
-        let expr_as_replacement = parser_prefix::to_expression("*(d,e)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
+        let expr_as_replacement = parser_prefix::to_expression("*(d,e)", &ctx).unwrap();
         let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(0)).unwrap();
         assert_eq!(new_expr0.to_string(true),"((d * e) + c)");
         
@@ -259,8 +259,8 @@ mod apply_equation {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
-        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let lhs = rule_eq.clone().children.unwrap()[0].clone();
         let match_map = expr.pattern_match_this_node(&lhs).unwrap();
         assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
@@ -280,8 +280,8 @@ mod apply_equation {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("+(+(a,0),b)", ctx.clone()).unwrap();
-        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(+(a,0),b)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let lhs = rule_eq.clone().children.unwrap()[0].clone();
         let match_map = expr.pattern_match_at(&lhs, address![0]).unwrap();
         assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
@@ -301,8 +301,8 @@ mod apply_equation {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
-        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let new_expr = expr.apply_equation_ltr_this_node(rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "a");
     }
@@ -317,8 +317,8 @@ mod apply_equation {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("+(a,0)", ctx.clone()).unwrap();
-        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let new_expr = expr.apply_equation_rtl_this_node(rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "((a + 0) + 0)");
     }
@@ -333,8 +333,8 @@ mod apply_equation {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("+(a,b,0)", ctx.clone()).unwrap();
-        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("+(a,b,0)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let new_expr = expr.apply_equation_at(rule_eq, address![].sub(1)).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
@@ -354,8 +354,8 @@ mod apply_implication {
             handle_numerics: false,
         };
         
-        let expr = parser_prefix::to_expression("=(+(a,b),a)", ctx.clone()).unwrap();
-        let rule = parser_prefix::to_expression("=>( =(+(X,Y),X), =(Y,0))", ctx.clone()).unwrap();
+        let expr = parser_prefix::to_expression("=(+(a,b),a)", &ctx).unwrap();
+        let rule = parser_prefix::to_expression("=>( =(+(X,Y),X), =(Y,0))", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "((a + b) = a)");
         assert_eq!(rule.to_string(true), "(((X + Y) = X) => (Y = 0))");
         let new_expr = expr.apply_implication(rule).unwrap();

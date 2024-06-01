@@ -10,7 +10,7 @@ mod calculation {
     #[test]
     fn simple_addition() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(+(1,0),+(2,3))", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(+(1,0),+(2,3))", &ctx).unwrap();
         let value = expr.calculate_numeric();
         assert_eq!(value.unwrap(), 6.0);
     }
@@ -18,7 +18,7 @@ mod calculation {
     #[test]
     fn simple_addition_with_negative_number() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(+(1,0),+(-2,3))", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(+(1,0),+(-2,3))", &ctx).unwrap();
         let value = expr.calculate_numeric();
         assert_eq!(value.unwrap(), 2.0);
     }
@@ -26,7 +26,7 @@ mod calculation {
     #[test]
     fn simple_addition_with_negative_unary() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(+(1,0),+(-(2),3))", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(+(1,0),+(-(2),3))", &ctx).unwrap();
         let value = expr.calculate_numeric();
         assert_eq!(value.unwrap(), 2.0);
     }
@@ -34,7 +34,7 @@ mod calculation {
     #[test]
     fn addition_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(1,2,3,4)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(1,2,3,4)", &ctx).unwrap();
         assert!(match expr.identify_arithmetic_operator() {
           Some(arithmetic::ArithmeticOperator::AddTrain) => true,
           _ => false,
@@ -51,7 +51,7 @@ mod generate_equation {
     #[test]
     fn simple_equation() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(1,2)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(1,2)", &ctx).unwrap();
         let eq = expr.generate_simple_arithmetic_equation().unwrap();
         assert_eq!(eq.clone().children.unwrap()[1].symbol, "3");
         assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
@@ -60,7 +60,7 @@ mod generate_equation {
     #[test]
     fn generate_from_simple_address() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("*(+(1,2),3)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("*(+(1,2),3)", &ctx).unwrap();
         let eq = expr.generate_simple_artithmetic_equation_at(address![0]).unwrap();
         assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
     }
@@ -68,7 +68,7 @@ mod generate_equation {
     #[test]
     fn generate_from_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("*(+(1,2,3,4,5),3)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("*(+(1,2,3,4,5),3)", &ctx).unwrap();
         let eq = expr.generate_simple_artithmetic_equation_at(address![0].sub(2)).unwrap();
         assert_eq!(eq.to_string(true), "((3 + 4) = 7)");
     }
@@ -81,7 +81,7 @@ mod normalization {
     #[test]
     fn negative() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(-(-(1),0),+(-(2),3))", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(-(-(1),0),+(-(2),3))", &ctx).unwrap();
         let normalized_expr = expr.handle_negative_unary_on_numerics();
         assert_eq!(normalized_expr.at(address![0,0]).unwrap().symbol, "-1");
         assert_eq!(normalized_expr.at(address![1,0]).unwrap().symbol, "-2");
@@ -97,7 +97,7 @@ mod simplification {
     #[test]
     fn simple() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(+(1,2),3)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(+(1,2),3)", &ctx).unwrap();
         
         let action_addr = address![0];
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
@@ -115,7 +115,7 @@ mod simplification {
     #[test]
     fn on_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
-        let expr = parser_prefix::to_expression("+(1,2,3)", ctx).unwrap();
+        let expr = parser_prefix::to_expression("+(1,2,3)", &ctx).unwrap();
         
         let action_addr = address![].sub(0);
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
