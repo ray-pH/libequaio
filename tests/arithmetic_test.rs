@@ -79,10 +79,28 @@ mod normalization {
     use super::*;
     
     #[test]
+    fn sub_to_negative() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("-(2,3)", &ctx).unwrap();
+        let normalized_expr = expr.normalize_sub_to_negative();
+        let target_expr = parser_prefix::to_expression("+(2,-(3))", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn sub_to_negative_deep() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        let expr = parser_prefix::to_expression("+(-(2,3),-(1,4))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_sub_to_negative();
+        let target_expr = parser_prefix::to_expression("+(+(2,-(3)),+(1,-(4)))", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
     fn negative() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(-(-(1),0),+(-(2),3))", &ctx).unwrap();
-        let normalized_expr = expr.handle_negative_unary_on_numerics();
+        let normalized_expr = expr.normalize_handle_negative_unary_on_numerics();
         assert_eq!(normalized_expr.at(address![0,0]).unwrap().symbol, "-1");
         assert_eq!(normalized_expr.at(address![1,0]).unwrap().symbol, "-2");
         assert_eq!(expr.to_string(true), "(((-1) - 0) + ((-2) + 3))");

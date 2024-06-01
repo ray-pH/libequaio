@@ -69,29 +69,6 @@ impl exp::Expression {
         }
     }
     
-    // if the expression is a negative unary operator on a numeric value, 
-    // change it to the negative of the numeric value (as a numeric value)
-    pub fn handle_negative_unary_on_numerics(&self) -> Expression {
-        if self.children.is_none() { return self.clone(); }
-        let op = self.identify_arithmetic_operator();
-        if op == Some(ArithmeticOperator::Negative) && self.children.as_ref().unwrap()[0].is_numeric(){
-            let child = self.children.as_ref().unwrap()[0].clone();
-            let new_symbol = format!("{}", -child.symbol.parse::<f64>().unwrap());
-            return Expression {
-                symbol: new_symbol,
-                children: None,
-                exp_type: ExpressionType::ValueConst,
-            }
-        }
-        let new_children = self.children.as_ref().unwrap().iter()
-            .map(|c| c.handle_negative_unary_on_numerics()).collect();
-        return Expression {
-            symbol: self.symbol.clone(),
-            children: Some(new_children),
-            exp_type: self.exp_type.clone(),
-        }
-    }
-    
     pub fn is_numeric(&self) -> bool {
         return self.exp_type == ExpressionType::ValueConst 
             && self.symbol.parse::<f64>().is_ok()
@@ -111,6 +88,61 @@ impl exp::Expression {
         if !self.is_operator() { return false; }
         // return true if all children are numeric values
         return self.children.as_ref().unwrap().iter().all(|c| c.is_numeric());
+    }
+    
+    // if the expression is a negative unary operator on a numeric value, 
+    // change it to the negative of the numeric value (as a numeric value)
+    pub fn normalize_handle_negative_unary_on_numerics(&self) -> Expression {
+        if self.children.is_none() { return self.clone(); }
+        let op = self.identify_arithmetic_operator();
+        if op == Some(ArithmeticOperator::Negative) && self.children.as_ref().unwrap()[0].is_numeric(){
+            let child = self.children.as_ref().unwrap()[0].clone();
+            let new_symbol = format!("{}", -child.symbol.parse::<f64>().unwrap());
+            return Expression {
+                symbol: new_symbol,
+                children: None,
+                exp_type: ExpressionType::ValueConst,
+            }
+        }
+        let new_children = self.children.as_ref().unwrap().iter()
+            .map(|c| c.normalize_handle_negative_unary_on_numerics()).collect();
+        return Expression {
+            symbol: self.symbol.clone(),
+            children: Some(new_children),
+            exp_type: self.exp_type.clone(),
+        }
+    }
+    
+    pub fn normalize_sub_to_negative(&self) -> Expression {
+        match self.identify_arithmetic_operator() {
+            Some(ArithmeticOperator::Sub) => {
+                let children = self.children.as_ref().unwrap();
+                let left = children[0].clone();
+                let right = children[1].clone();
+                let negative_right = Expression {
+                    exp_type : ExpressionType::OperatorUnary,
+                    symbol   : ArithmeticOperator::Negative.to_string(),
+                    children : Some(vec![right])
+                };
+                return Expression {
+                    exp_type : ExpressionType::OperatorBinary,
+                    symbol   : ArithmeticOperator::Add.to_string(),
+                    children : Some(vec![left, negative_right])
+                };
+            },
+            _ if self.children.is_some() => {
+                let children = self.children.as_ref().unwrap();
+                let normalized_children = children.iter().map(|c| c.normalize_sub_to_negative()).collect();
+                return Expression {
+                    exp_type : self.exp_type.clone(),
+                    symbol   : self.symbol.clone(),
+                    children : Some(normalized_children)
+                }
+            }
+            _ => {
+                return self.clone();
+            }
+        }
     }
     
     pub fn generate_simple_arithmetic_equation(&self) -> Option<Expression> {
