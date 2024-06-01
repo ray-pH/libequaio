@@ -13,8 +13,8 @@ macro_rules! vec_strings {
 /// check if two hashmaps have no clash
 /// if a key is present in both maps, the value must be the same
 /// if a key is present in only one map, the value can be anything
-pub fn is_hashmap_no_clash<T,V>(map1 : &HashMap<T,V>, map2 : &HashMap<T,V>) -> bool
-where T : Eq + Hash, V : PartialEq {
+pub fn is_hashmap_no_clash<T,V>(map1: &HashMap<T,V>, map2: &HashMap<T,V>) -> bool
+where T: Eq + Hash, V: PartialEq {
     for (k,v) in map1 {
         if map2.contains_key(k) && map2[k] != *v { return false; }
     }

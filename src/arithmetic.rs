@@ -129,7 +129,7 @@ impl exp::Expression {
         })
     }
     
-    fn generate_expr_from_train_sub_address(&self, sub_address : usize) -> Option<Expression> {
+    fn generate_expr_from_train_sub_address(&self, sub_address: usize) -> Option<Expression> {
         if !self.is_arithmetic_train_operator() { return None; }
         if sub_address+1 >= self.children.as_ref().unwrap().len() { return None; }
         let lhs = self.children.as_ref().unwrap()[sub_address].clone();

@@ -12,7 +12,7 @@ pub enum ExpressionType {
     // `AssocTrain` is a special type for *associative* binary operators
     // this is introduced because when representing expression as a tree,
     // the associative binary operator train can be represented in multiple ways
-    // ex : `a + b + c + d` can be represented as `((a + b) + c) + d` or `a + ((b + c) + d)`
+    // ex: `a + b + c + d` can be represented as `((a + b) + c) + d` or `a + ((b + c) + d)`
     // the value of the expression is the same, but the structure is different
     // it's hard to go from the first representation to the second one, or vice versa
     // it requires a lot of application of the associative property
@@ -31,7 +31,7 @@ impl StatementSymbols {
             StatementSymbols::Implies => "=>"
         }
     }
-    pub fn from_str(s : &str) -> Option<StatementSymbols> {
+    pub fn from_str(s: &str) -> Option<StatementSymbols> {
         match s {
             "=" => Some(StatementSymbols::Equal),
             "=>" => Some(StatementSymbols::Implies),
@@ -59,16 +59,16 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn add_param(&mut self, param : String) {
+    pub fn add_param(&mut self, param: String) {
         if !self.parameters.contains(&param) { self.parameters.push(param); }
     }
-    pub fn add_params(&mut self, params : Vec<String>) {
+    pub fn add_params(&mut self, params: Vec<String>) {
         for p in params { self.add_param(p); }
     }
-    pub fn remove_param(&mut self, param : &String) {
+    pub fn remove_param(&mut self, param: &String) {
         self.parameters.retain(|p| p != param);
     }
-    pub fn remove_params(&mut self, params : &Vec<String>) {
+    pub fn remove_params(&mut self, params: &Vec<String>) {
         for p in params { self.remove_param(p); }
     }
 }
@@ -84,15 +84,15 @@ impl Address {
     pub fn empty() -> Self {
         return Address { path: vec![], sub: None };
     }
-    pub fn new(path : Vec<usize>, sub : Option<usize>) -> Self {
+    pub fn new(path: Vec<usize>, sub: Option<usize>) -> Self {
         return Address { path, sub };
     }
-    pub fn append(&self, val : usize) -> Self {
+    pub fn append(&self, val: usize) -> Self {
         let mut new_path = self.path.clone();
         new_path.push(val);
         return Address { path: new_path, sub: self.sub };
     }
-    pub fn sub(&self, val : usize) -> Self {
+    pub fn sub(&self, val: usize) -> Self {
         return Address { path: self.path.clone(), sub: Some(val) };
     }
     pub fn tail(&self) -> Self {
@@ -161,7 +161,7 @@ impl Expression {
         return children.iter().any(|c| c.is_contain_variable());
     }
 
-    pub fn to_string(&self, parentheses : bool) -> String {
+    pub fn to_string(&self, parentheses: bool) -> String {
         match &self.exp_type {
             ExpressionType::ValueConst => self.symbol.clone(),
             ExpressionType::ValueVar => self.symbol.clone(),
@@ -215,7 +215,7 @@ impl Expression {
     }
 
     /// Get the expression from the address
-    pub fn at(&self, address : Address) -> Option<&Expression> {
+    pub fn at(&self, address: Address) -> Option<&Expression> {
         if address.path.len() == 0 { 
             return Some(self)
         }
@@ -239,13 +239,13 @@ impl Expression {
         });
     }
 
-    pub fn get_pattern_matches(&self, pattern : &Expression) -> Vec<(Address,MatchMap)> {
+    pub fn get_pattern_matches(&self, pattern: &Expression) -> Vec<(Address,MatchMap)> {
         return self.f_get_patten_matches(pattern, Address::empty(), true);
     }
     
     /// Try to match the pattern expression with this expression, and all its children.
     /// Returns a list of maps, where each map represents a match.
-    fn f_get_patten_matches(&self, pattern : &Expression, current_address : Address, check_children : bool) -> Vec<(Address,MatchMap)> {
+    fn f_get_patten_matches(&self, pattern: &Expression, current_address: Address, check_children: bool) -> Vec<(Address,MatchMap)> {
         let mut result = Vec::new();
 
         // try to match the root node
@@ -282,7 +282,7 @@ impl Expression {
     }
     
     /// Try to match the pattern expression with expression at the given address
-    pub fn pattern_match_at(&self, pattern : &Expression, addr : Address) -> Option<MatchMap> {
+    pub fn pattern_match_at(&self, pattern: &Expression, addr: Address) -> Option<MatchMap> {
         let curr_node = self.at(addr.clone())?;
         if let Some(sub_addr) = addr.sub {
             let sub_expr = curr_node.generate_subexpr_from_train(sub_addr)?;
@@ -295,7 +295,7 @@ impl Expression {
 
     /// Try to match the pattern expression with this expression. (match the root node)
     /// Returns a map of the symbols, or None if there is the pattern does not match.
-    pub fn pattern_match_this_node(&self, pattern : &Expression) -> Option<MatchMap> {
+    pub fn pattern_match_this_node(&self, pattern: &Expression) -> Option<MatchMap> {
         use ExpressionType::*;
         match pattern.exp_type {
             // if the pattern is a constant parameter, then it must match exactly with this expression
@@ -343,8 +343,8 @@ impl Expression {
     }
     
     // apply match map to the expression
-    // use case : self is a "rule expression" e.g. X + 0 = X
-    pub fn apply_match_map(&self, match_map : &MatchMap) -> Expression {
+    // use case: self is a "rule expression" e.g. X + 0 = X
+    pub fn apply_match_map(&self, match_map: &MatchMap) -> Expression {
         match self.exp_type {
             ExpressionType::ValueVar => {
                 if let Some(expr) = match_map.get(&self.symbol) { return expr.clone(); }
@@ -364,7 +364,7 @@ impl Expression {
     }
     
     /// Create a new expression by replacing the expression at the address with the new expression
-    pub fn replace_expression_at(&self, new_expr : Expression, addr : Address) -> Option<Expression> {
+    pub fn replace_expression_at(&self, new_expr: Expression, addr: Address) -> Option<Expression> {
         if addr.path.len() == 0 { 
             if addr.sub.is_none() { return Some(new_expr);  }
             if !self.is_assoc_train() { return None; }
@@ -385,7 +385,7 @@ impl Expression {
         }
     }
     
-    fn replace_expression_at_train(&self, new_expr : Expression, sub_address: usize) -> Option<Expression> {
+    fn replace_expression_at_train(&self, new_expr: Expression, sub_address: usize) -> Option<Expression> {
         if !self.is_assoc_train() { return None; }
         let children = self.children.as_ref().unwrap();
         if sub_address >= children.len()-1 { return None; }
@@ -409,13 +409,13 @@ impl Expression {
             children : Some(vec![right, left]),
         };
     }
-    pub fn apply_equation_this_node(&self, equation : Expression) -> Option<Expression> {
+    pub fn apply_equation_this_node(&self, equation: Expression) -> Option<Expression> {
         return self.apply_equation_ltr_this_node(equation);
     }
-    pub fn apply_equation_rtl_this_node(&self, equation : Expression) -> Option<Expression> {
+    pub fn apply_equation_rtl_this_node(&self, equation: Expression) -> Option<Expression> {
         return self.apply_equation_ltr_this_node(equation.flip_equation());
     }
-    pub fn apply_equation_ltr_this_node(&self, equation : Expression) -> Option<Expression> {
+    pub fn apply_equation_ltr_this_node(&self, equation: Expression) -> Option<Expression> {
         if !equation.is_equation() { return None; }
         
         let eq_children = equation.children.as_ref()?;
@@ -437,13 +437,13 @@ impl Expression {
             return self.apply_equation_ltr_this_node(equation);
         }
     }
-    pub fn apply_equation_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+    pub fn apply_equation_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
         return self.apply_equation_ltr_at(equation, addr);
     }
-    pub fn apply_equation_rtl_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
         return self.apply_equation_ltr_at(equation.flip_equation(), addr);
     }
-    pub fn apply_equation_ltr_at(&self, equation : Expression, addr : Address) -> Option<Expression> {
+    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
         let expr = self.at(addr.clone())?;
         if addr.sub.is_none() {
             let new_expr = expr.apply_equation_this_node(equation)?;
@@ -456,7 +456,7 @@ impl Expression {
         }
     }
     
-    pub fn apply_implication(&self, implication : Expression) -> Option<Expression>{
+    pub fn apply_implication(&self, implication: Expression) -> Option<Expression>{
         if !implication.is_implication() { return None; }
         
         let impl_children = implication.children.as_ref()?;

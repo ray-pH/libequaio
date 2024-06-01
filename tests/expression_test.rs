@@ -4,7 +4,7 @@ use equaio::vec_strings;
 use equaio::parser_prefix;
 use equaio::address;
 
-fn print_matches(matches : Vec<(exp::Address,exp::MatchMap)>) {
+fn print_matches(matches: Vec<(exp::Address,exp::MatchMap)>) {
     for (address, map) in matches {
         println!("Match at address {:?}:{:?}", address.path, address.sub);
         for (k,v) in map {
@@ -95,7 +95,7 @@ mod pattern_matching {
     }
     
 
-    fn expr_pattern_match(expr : &str, pattern : &str) -> Vec<(exp::Address,exp::MatchMap)> {
+    fn expr_pattern_match(expr: &str, pattern: &str) -> Vec<(exp::Address,exp::MatchMap)> {
         let ctx = exp::Context {
             parameters: vec_strings!["x", "y", "z", "a"],
             unary_ops: vec_strings!["+", "-"],

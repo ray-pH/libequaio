@@ -8,11 +8,11 @@ enum Token {
     Symbol(String),
 }
 
-fn tokenize(s : String) -> Vec<Token> {
+fn tokenize(s: String) -> Vec<Token> {
     let mut tokens = Vec::new();
     let mut current_symbol = String::new();
 
-    let push_symbol_if_any = |current_symbol : &mut String, tokens : &mut Vec<Token>| {
+    let push_symbol_if_any = |current_symbol: &mut String, tokens: &mut Vec<Token>| {
         if current_symbol.len() > 0 {
             tokens.push(Token::Symbol(current_symbol.clone()));
             current_symbol.clear();
@@ -48,7 +48,7 @@ fn tokenize(s : String) -> Vec<Token> {
 /// split the tokens by commas
 /// 1,2,f(3,4),g(f(1,2),3)
 /// -> [[1], [2], [f(3,4)], [g(f(1,2),3)]]
-fn split_tokens_by_comma(tokens : &Vec<Token>) -> Vec<Vec<Token>> {
+fn split_tokens_by_comma(tokens: &Vec<Token>) -> Vec<Vec<Token>> {
     let mut result  : Vec<Vec<Token>> = Vec::new();
     let mut current : Vec<Token> = Vec::new();
     let mut paren_count = 0;
@@ -73,7 +73,7 @@ fn split_tokens_by_comma(tokens : &Vec<Token>) -> Vec<Vec<Token>> {
     result
 }
 
-fn tokens_to_expression(tokens : &Vec<Token>, ctx : &Context) -> Option<Expression> {
+fn tokens_to_expression(tokens: &Vec<Token>, ctx: &Context) -> Option<Expression> {
     // first token must be a symbol
     if let Token::Symbol(ref s) = tokens[0] {
         if tokens.len() == 1 {
@@ -117,7 +117,7 @@ fn tokens_to_expression(tokens : &Vec<Token>, ctx : &Context) -> Option<Expressi
     None
 }
 
-pub fn to_expression<T: AsRef<str>>(text : T, ctx : &Context) -> Option<Expression> {
+pub fn to_expression<T: AsRef<str>>(text: T, ctx: &Context) -> Option<Expression> {
     let s : String = text.as_ref().to_string();
     tokens_to_expression(&tokenize(s), ctx)
 }
