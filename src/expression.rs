@@ -59,17 +59,21 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn add_param(&mut self, param: String) {
+    pub fn add_param(&mut self, param: String) -> Context {
         if !self.parameters.contains(&param) { self.parameters.push(param); }
+        return self.clone();
     }
-    pub fn add_params(&mut self, params: Vec<String>) {
+    pub fn add_params(&mut self, params: Vec<String>) -> Context {
         for p in params { self.add_param(p); }
+        return self.clone();
     }
-    pub fn remove_param(&mut self, param: &String) {
+    pub fn remove_param(&mut self, param: &String) -> Context {
         self.parameters.retain(|p| p != param);
+        return self.clone();
     }
-    pub fn remove_params(&mut self, params: &Vec<String>) {
+    pub fn remove_params(&mut self, params: &Vec<String>) -> Context {
         for p in params { self.remove_param(p); }
+        return self.clone();
     }
 }
 
@@ -140,10 +144,22 @@ impl Expression {
         return self.exp_type == ExpressionType::StatementOperatorBinary;
     }
     pub fn is_equation(&self) -> bool {
-        match self.identify_statement_operator() { Some(StatementSymbols::Equal) => true, _ => false }
+        match self.identify_statement_operator() { 
+            Some(StatementSymbols::Equal) => {
+                if self.children.is_none() { return false; }
+                return self.children.as_ref().unwrap().len() == 2;
+            }, 
+            _ => false 
+        }
     }
     pub fn is_implication(&self) -> bool {
-        match self.identify_statement_operator() { Some(StatementSymbols::Implies) => true, _ => false }
+        match self.identify_statement_operator() { 
+            Some(StatementSymbols::Implies) => {
+                if self.children.is_none() { return false; }
+                return self.children.as_ref().unwrap().len() == 2;
+            },
+            _ => false 
+        }
     }
     pub fn identify_statement_operator(&self) -> Option<StatementSymbols> {
         if !self.is_statement() { return None; }
@@ -213,6 +229,17 @@ impl Expression {
             },
         }
     }
+    
+    pub fn substitute_symbol(&self, from: String, to: String) -> Expression {
+        let mut new_exp = self.clone();
+        if new_exp.symbol == from { new_exp.symbol = to.clone(); }
+        if new_exp.children.is_some() {
+            for c in new_exp.children.as_mut().unwrap() {
+                *c = c.substitute_symbol(from.clone(), to.clone());
+            }
+        }
+        return new_exp;
+    }
 
     /// Get the expression from the address
     pub fn at(&self, address: Address) -> Option<&Expression> {
@@ -254,6 +281,57 @@ impl Expression {
             exp_type : ExpressionType::AssocTrain,
             symbol   : self.symbol.clone(),
             children : Some(chidren),
+        }
+    }
+    
+    /// turn assoc train that has two children into binary operator
+    pub fn normalize_two_children_assoc_train_to_binary_op(&self, binary_ops: &Vec<String>) -> Expression {
+        if self.children.is_none() { return self.clone() }
+        let children = self.children.as_ref().unwrap();
+        let normalized_children = children.iter().map(|c| c.normalize_two_children_assoc_train_to_binary_op(binary_ops));
+        if self.is_assoc_train() && children.len() == 2 && binary_ops.contains(&self.symbol) {
+            return Expression {
+                exp_type : ExpressionType::OperatorBinary,
+                symbol   : self.symbol.clone(),
+                children : Some(normalized_children.collect()),
+            }
+        } else {
+            return Expression {
+                exp_type : self.exp_type.clone(),
+                symbol   : self.symbol.clone(),
+                children : Some(normalized_children.collect()),
+            }
+        }
+    }
+    
+    pub fn normalize_single_children_assoc_train(&self) -> Expression {
+        if self.children.is_none() { return self.clone() }
+        let children = self.children.as_ref().unwrap();
+        let mut normalized_children = children.iter().map(|c| c.normalize_single_children_assoc_train());
+        if self.is_assoc_train() && children.len() == 1 {
+            return normalized_children.next().unwrap();
+        } else {
+            return Expression {
+                exp_type : self.exp_type.clone(),
+                symbol   : self.symbol.clone(),
+                children : Some(normalized_children.collect()),
+            }
+        }
+    }
+    
+    /// turn values into a single child assoc train
+    /// turn binary operator into a two children assoc train
+    /// * `NOTE`: this function doesn't check if the operator is associative or not
+    pub fn turn_into_assoc_train(&self, symbol: String) -> Expression {
+        let children =  if self.children.is_none() {
+            Some(vec![self.clone()])
+        } else {
+            self.children.clone()
+        };
+        return Expression {
+            exp_type : ExpressionType::AssocTrain,
+            symbol,
+            children,
         }
     }
     
@@ -510,4 +588,14 @@ impl Expression {
             return self.apply_implication(implication);
         }
     }
+}
+
+pub fn empty_context() -> Context {
+    return Context {
+        parameters : vec![],
+        unary_ops  : vec![],
+        binary_ops : vec![],
+        assoc_ops  : vec![],
+        handle_numerics : false,
+    };
 }

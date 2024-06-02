@@ -41,12 +41,28 @@ mod basic {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
+        assert_eq!(expr.to_string(true), "(a + b + c)");
         let subexpr0 = expr.generate_subexpr_from_train(0).unwrap();
         let target0 = parser_prefix::to_expression("+(a,b)", &ctx).unwrap();
         assert_eq!(subexpr0, target0);
         let subexpr1 = expr.generate_subexpr_from_train(1).unwrap();
         let target1 = parser_prefix::to_expression("+(b,c)", &ctx).unwrap();
         assert_eq!(subexpr1, target1);
+    }
+    
+    #[test]
+    fn substitute_symbol() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "x"],
+            unary_ops: vec_strings![],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings![],
+            handle_numerics: false,
+        };
+        let expr = parser_prefix::to_expression("+(a,+(b,c))", &ctx).unwrap();
+        assert_eq!(expr.to_string(true), "(a + (b + c))");
+        let new_expr = expr.substitute_symbol("b".to_string(), "x".to_string());
+        assert_eq!(new_expr.to_string(true), "(a + (x + c))");
     }
 }
 
@@ -126,6 +142,26 @@ mod assoc_train_normalization {
         let normalized_expr = expr.normalize_to_assoc_train(&ctx.assoc_ops);
         let target_expr = parser_prefix::to_expression("=(+(a,b,c),d)", &ctx).unwrap();
         assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn two_children_assoc_train_to_binary_op(){
+        let ctx = get_ctx();
+        let mut expr = parser_prefix::to_expression("+(a,b)", &ctx).unwrap();
+        expr.exp_type = exp::ExpressionType::AssocTrain;
+        assert_eq!(expr.exp_type, exp::ExpressionType::AssocTrain);
+        let normalized_expr = expr.normalize_two_children_assoc_train_to_binary_op(&ctx.binary_ops);
+        assert_eq!(normalized_expr.exp_type, exp::ExpressionType::OperatorBinary);
+    }
+    
+    #[test]
+    fn single_children_assoc_train(){
+        let ctx = get_ctx();
+        let mut expr = parser_prefix::to_expression("+(a)", &ctx).unwrap();
+        expr.exp_type = exp::ExpressionType::AssocTrain;
+        assert_eq!(expr.exp_type, exp::ExpressionType::AssocTrain);
+        let normalized_expr = expr.normalize_single_children_assoc_train();
+        assert!(normalized_expr.is_value());
     }
     
 }

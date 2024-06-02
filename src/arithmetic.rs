@@ -74,6 +74,11 @@ impl exp::Expression {
             && self.symbol.parse::<f64>().is_ok()
     }
     
+    pub fn is_integer(&self) -> bool {
+        return self.exp_type == ExpressionType::ValueConst 
+            && self.symbol.parse::<i64>().is_ok()
+    }
+    
     pub fn is_arithmetic_train_operator(&self) -> bool {
         match self.identify_arithmetic_operator() {
             Some(ArithmeticOperator::AddTrain) => true,
@@ -146,8 +151,9 @@ impl exp::Expression {
     }
     
     pub fn generate_simple_arithmetic_equation(&self) -> Option<Expression> {
-        if !self.is_directly_calculatable() { return None };
-        let val = self.calculate_numeric()?;
+        let normalized_self = self.normalize_handle_negative_unary_on_numerics();
+        if !normalized_self.is_directly_calculatable() { return None };
+        let val = normalized_self.calculate_numeric()?;
         let lhs = self.clone();
         let rhs = Expression {
             symbol: format!("{}", val),
@@ -181,6 +187,11 @@ impl exp::Expression {
         } else {
             return target.generate_simple_arithmetic_equation();
         };
+    }
+    
+    pub fn apply_simple_arithmetic_equation_at(&self, addr: exp::Address) -> Option<Expression> {
+        let equation = self.generate_simple_artithmetic_equation_at(addr.clone())?;
+        return self.apply_equation_at(equation, addr);
     }
 
     /// Calculate the value of the expression if it is an arithmetic operation
