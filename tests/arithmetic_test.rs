@@ -61,7 +61,7 @@ mod generate_equation {
     fn generate_from_simple_address() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("*(+(1,2),3)", &ctx).unwrap();
-        let eq = expr.generate_simple_artithmetic_equation_at(address![0]).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(&address![0]).unwrap();
         assert_eq!(eq.to_string(true), "((1 + 2) = 3)");
     }
     
@@ -69,7 +69,7 @@ mod generate_equation {
     fn generate_from_train() {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("*(+(1,2,3,4,5),3)", &ctx).unwrap();
-        let eq = expr.generate_simple_artithmetic_equation_at(address![0].sub(2)).unwrap();
+        let eq = expr.generate_simple_artithmetic_equation_at(&address![0].sub(2)).unwrap();
         assert_eq!(eq.to_string(true), "((3 + 4) = 7)");
     }
 }
@@ -101,8 +101,8 @@ mod normalization {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(-(-(1),0),+(-(2),3))", &ctx).unwrap();
         let normalized_expr = expr.normalize_handle_negative_unary_on_numerics();
-        assert_eq!(normalized_expr.at(address![0,0]).unwrap().symbol, "-1");
-        assert_eq!(normalized_expr.at(address![1,0]).unwrap().symbol, "-2");
+        assert_eq!(normalized_expr.at(&address![0,0]).unwrap().symbol, "-1");
+        assert_eq!(normalized_expr.at(&address![1,0]).unwrap().symbol, "-2");
         assert_eq!(expr.to_string(true), "(((-1) - 0) + ((-2) + 3))");
         assert_eq!(normalized_expr.to_string(true), "((-1 - 0) + (-2 + 3))");
     }
@@ -117,14 +117,14 @@ mod simplification {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(+(1,2),3)", &ctx).unwrap();
         
-        let action_addr = address![0];
-        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        let action_addr = &address![0];
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((1 + 2) = 3)");
         let expr = expr.apply_equation_at(equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "(3 + 3)");
         
-        let action_addr = address![];
-        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        let action_addr = &address![];
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((3 + 3) = 6)");
         let expr = expr.apply_equation_at(equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "6");
@@ -135,14 +135,14 @@ mod simplification {
         let ctx = arithmetic::get_arithmetic_ctx();
         let expr = parser_prefix::to_expression("+(1,2,3)", &ctx).unwrap();
         
-        let action_addr = address![].sub(0);
-        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        let action_addr = &address![].sub(0);
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((1 + 2) = 3)");
         let expr = expr.apply_equation_at(equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "(3 + 3)");
         
-        let action_addr = address![];
-        let equation = expr.generate_simple_artithmetic_equation_at(action_addr.clone()).unwrap();
+        let action_addr = &address![];
+        let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((3 + 3) = 6)");
         let expr = expr.apply_equation_at(equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "6");

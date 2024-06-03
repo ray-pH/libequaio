@@ -29,10 +29,10 @@ mod function {
         let expr = parser_prefix::to_expression("f(2)", &ctx).unwrap();
         let function_expr = parser_prefix::to_expression("=(f(X), +(X,3))", &ctx).unwrap();
         assert_eq!(function_expr.to_string(true), "(f(X) = (X + 3))");
-        let expr = expr.apply_equation_at(function_expr, address![]).unwrap();
+        let expr = expr.apply_equation_at(function_expr, &address![]).unwrap();
         assert_eq!(expr.to_string(true), "(2 + 3)");
-        let equation = expr.generate_simple_artithmetic_equation_at(address![]).unwrap();
-        let expr = expr.apply_equation_at(equation, address![]).unwrap();
+        let equation = expr.generate_simple_artithmetic_equation_at(&address![]).unwrap();
+        let expr = expr.apply_equation_at(equation, &address![]).unwrap();
         assert_eq!(expr.to_string(true), "5");
     }
     
@@ -84,29 +84,29 @@ mod simple_algebra {
         let expr = expr.apply_function_to_both_side(add1_fn)
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) + (-1) + 1) = (3 + 1))");
-        let expr = expr.apply_simple_arithmetic_equation_at(address![1])
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![1])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) + (-1) + 1) = 4)");
-        let expr = expr.apply_simple_arithmetic_equation_at(address![0].sub(1))
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![0].sub(1))
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) + 0) = 4)");
-        let expr = expr.apply_equation_at(x_plus_zero.clone(), address![0])
+        let expr = expr.apply_equation_at(x_plus_zero.clone(), &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((2 * x) = 4)");
         let div2_fn = parser_prefix::to_expression("=(_(X),/(X,2))", &ctx).unwrap();
         let expr = expr.apply_function_to_both_side(div2_fn)
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) / 2) = (4 / 2))");
-        let expr = expr.apply_simple_arithmetic_equation_at(address![1])
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![1])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) / 2) = 2)");
-        let expr = expr.apply_fraction_aritmetic_at(0, 0, address![0])
+        let expr = expr.apply_fraction_aritmetic_at(0, 0, &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((1 * x) / 1) = 2)");
-        let expr = expr.apply_equation_at(x_div_one.clone(), address![0])
+        let expr = expr.apply_equation_at(x_div_one.clone(), &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((1 * x) = 2)");
-        let expr = expr.apply_equation_at(one_times_x.clone(), address![0])
+        let expr = expr.apply_equation_at(one_times_x.clone(), &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(x = 2)");
     }

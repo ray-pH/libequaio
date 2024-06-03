@@ -200,12 +200,12 @@ mod pattern_matching {
         let expr = parser_prefix::to_expression("+(x,+(y,z))", &ctx).unwrap();
         let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
         
-        let map0 = expr.pattern_match_at(&pattern, address![]).unwrap();
+        let map0 = expr.pattern_match_at(&pattern, &address![]).unwrap();
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "(y + z)");
-        let map1 = expr.pattern_match_at(&pattern, address![0]);
+        let map1 = expr.pattern_match_at(&pattern, &address![0]);
         assert!(map1.is_none());
-        let map2 = expr.pattern_match_at(&pattern, address![1]).unwrap();
+        let map2 = expr.pattern_match_at(&pattern, &address![1]).unwrap();
         assert_eq!(map2.get("A").unwrap().to_string(true), "y");
         assert_eq!(map2.get("B").unwrap().to_string(true), "z");
     }
@@ -332,10 +332,10 @@ mod expression_replacement {
         };
         let expr = parser_prefix::to_expression("+(a,+(b,c))", &ctx).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(b,c)", &ctx).unwrap();
-        let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), address![1]);
+        let new_expr = expr.replace_expression_at(expr_as_replacement.clone(), &address![1]);
         assert_eq!(new_expr.unwrap().to_string(true),"(a + (b * c))");
         
-        let new_expr2 = expr.replace_expression_at(expr_as_replacement, address![1,1]);
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement, &address![1,1]);
         assert_eq!(new_expr2.unwrap().to_string(true),"(a + (b + (b * c)))");
     }
     
@@ -350,13 +350,13 @@ mod expression_replacement {
         };
         let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(d,e)", &ctx).unwrap();
-        let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(0)).unwrap();
+        let new_expr0 = expr.replace_expression_at(expr_as_replacement.clone(), &address![].sub(0)).unwrap();
         assert_eq!(new_expr0.to_string(true),"((d * e) + c)");
         
-        let new_expr1 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(1)).unwrap();
+        let new_expr1 = expr.replace_expression_at(expr_as_replacement.clone(), &address![].sub(1)).unwrap();
         assert_eq!(new_expr1.to_string(true),"(a + (d * e))");
         
-        let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), address![].sub(2));
+        let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), &address![].sub(2));
         assert!(new_expr2.is_none());
     }
 }
@@ -399,11 +399,11 @@ mod apply_equation {
         let expr = parser_prefix::to_expression("+(+(a,0),b)", &ctx).unwrap();
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let lhs = rule_eq.clone().children.unwrap()[0].clone();
-        let match_map = expr.pattern_match_at(&lhs, address![0]).unwrap();
+        let match_map = expr.pattern_match_at(&lhs, &address![0]).unwrap();
         assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
         let applied_eq = rule_eq.apply_match_map(&match_map);
         assert_eq!(applied_eq.to_string(true), "((a + 0) = a)");
-        let new_expr = expr.apply_equation_ltr_at(applied_eq, address![0]).unwrap();
+        let new_expr = expr.apply_equation_ltr_at(applied_eq, &address![0]).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
     
@@ -451,7 +451,7 @@ mod apply_equation {
         
         let expr = parser_prefix::to_expression("+(a,b,0)", &ctx).unwrap();
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
-        let new_expr = expr.apply_equation_at(rule_eq, address![].sub(1)).unwrap();
+        let new_expr = expr.apply_equation_at(rule_eq, &address![].sub(1)).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
 }

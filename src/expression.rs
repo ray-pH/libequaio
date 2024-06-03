@@ -242,14 +242,14 @@ impl Expression {
     }
 
     /// Get the expression from the address
-    pub fn at(&self, address: Address) -> Option<&Expression> {
+    pub fn at(&self, address: &Address) -> Option<&Expression> {
         if address.path.len() == 0 { 
             return Some(self)
         }
         if self.children.is_none() { return None; }
         let index = address.path[0];
         if index >= self.children.as_ref().unwrap().len() { return None; }
-        return self.children.as_ref().unwrap()[index].at(address.tail());
+        return self.children.as_ref().unwrap()[index].at(&address.tail());
     }
     
     /// Normalize the expression, grouping the expression with the same operator together as a train
@@ -350,12 +350,12 @@ impl Expression {
     }
 
     pub fn get_pattern_matches(&self, pattern: &Expression) -> Vec<(Address,MatchMap)> {
-        return self.f_get_patten_matches(pattern, Address::empty(), true);
+        return self.f_get_patten_matches(pattern, &Address::empty(), true);
     }
     
     /// Try to match the pattern expression with this expression, and all its children.
     /// Returns a list of maps, where each map represents a match.
-    fn f_get_patten_matches(&self, pattern: &Expression, current_address: Address, check_children: bool) -> Vec<(Address,MatchMap)> {
+    fn f_get_patten_matches(&self, pattern: &Expression, current_address: &Address, check_children: bool) -> Vec<(Address,MatchMap)> {
         let mut result = Vec::new();
 
         // try to match the root node
@@ -367,7 +367,7 @@ impl Expression {
             for i in 0..self.children.as_ref().unwrap().len()-1 {
                 let subexpr = self.generate_subexpr_from_train(i);
                 if let Some(sub) = subexpr {
-                    let sub_matches = sub.f_get_patten_matches(pattern, current_address.clone().sub(i), false);
+                    let sub_matches = sub.f_get_patten_matches(pattern, &current_address.sub(i), false);
                     sub_matches.iter().for_each(|m| {
                         result.push(m.clone());
                     });
@@ -380,7 +380,7 @@ impl Expression {
             let children = self.children.as_ref().unwrap();
             for (i,c) in children.iter().enumerate() {
                 let child_address = current_address.append(i);
-                let child_matches = c.f_get_patten_matches(pattern, child_address, true);
+                let child_matches = c.f_get_patten_matches(pattern, &child_address, true);
                 // push the child matches to the result
                 child_matches.iter().for_each(|m| {
                     result.push(m.clone());
@@ -392,8 +392,8 @@ impl Expression {
     }
     
     /// Try to match the pattern expression with expression at the given address
-    pub fn pattern_match_at(&self, pattern: &Expression, addr: Address) -> Option<MatchMap> {
-        let curr_node = self.at(addr.clone())?;
+    pub fn pattern_match_at(&self, pattern: &Expression, addr: &Address) -> Option<MatchMap> {
+        let curr_node = self.at(addr)?;
         if let Some(sub_addr) = addr.sub {
             let sub_expr = curr_node.generate_subexpr_from_train(sub_addr)?;
             return sub_expr.pattern_match_this_node(pattern);
@@ -474,7 +474,7 @@ impl Expression {
     }
     
     /// Create a new expression by replacing the expression at the address with the new expression
-    pub fn replace_expression_at(&self, new_expr: Expression, addr: Address) -> Option<Expression> {
+    pub fn replace_expression_at(&self, new_expr: Expression, addr: &Address) -> Option<Expression> {
         if addr.path.len() == 0 { 
             if addr.sub.is_none() { return Some(new_expr);  }
             if !self.is_assoc_train() { return None; }
@@ -484,7 +484,7 @@ impl Expression {
         if addr.head() >= self.children.as_ref().unwrap().len() { return None; }
         else {
             let new_child = self.children.as_ref().unwrap()[addr.head()]
-                .replace_expression_at(new_expr, addr.tail())?;
+                .replace_expression_at(new_expr, &addr.tail())?;
             let mut new_children = self.children.as_ref().unwrap().clone();
             new_children[addr.head()] = new_child;
             return Some(Expression {
@@ -547,14 +547,14 @@ impl Expression {
             return self.apply_equation_ltr_this_node(equation);
         }
     }
-    pub fn apply_equation_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
+    pub fn apply_equation_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
         return self.apply_equation_ltr_at(equation, addr);
     }
-    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
+    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
         return self.apply_equation_ltr_at(equation.flip_equation(), addr);
     }
-    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: Address) -> Option<Expression> {
-        let expr = self.at(addr.clone())?;
+    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
+        let expr = self.at(addr)?;
         if addr.sub.is_none() {
             let new_expr = expr.apply_equation_this_node(equation)?;
             return self.replace_expression_at(new_expr, addr);

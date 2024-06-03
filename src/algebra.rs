@@ -53,12 +53,12 @@ impl Expression {
         // wrapped_expr : _(A) = _(B)
         let wrapped_expr = self.apply_implication(rule_expr)?;
         return wrapped_expr
-            .apply_equation_at(fn_expr.clone(), address![0])?
-            .apply_equation_at(fn_expr.clone(), address![1]);
+            .apply_equation_at(fn_expr.clone(), &address![0])?
+            .apply_equation_at(fn_expr.clone(), &address![1]);
     }
     
-    pub fn apply_fraction_aritmetic_at(&self, numerator_id: usize, denominator_id: usize, addr: Address) -> Option<Expression> {
-        let expr = self.at(addr.clone())?;
+    pub fn apply_fraction_aritmetic_at(&self, numerator_id: usize, denominator_id: usize, addr: &Address) -> Option<Expression> {
+        let expr = self.at(addr)?;
         let new_expr = expr.apply_fraction_arithmetic(numerator_id, denominator_id)?;
         return self.replace_expression_at(new_expr, addr);
     }

@@ -179,8 +179,8 @@ impl exp::Expression {
         });
     }
     
-    pub fn generate_simple_artithmetic_equation_at(&self, addr: exp::Address) -> Option<Expression> {
-        let target = self.at(addr.clone())?;
+    pub fn generate_simple_artithmetic_equation_at(&self, addr: &exp::Address) -> Option<Expression> {
+        let target = self.at(addr)?;
         if let Some(sub_address) = addr.sub {
             let expr = target.generate_expr_from_train_sub_address(sub_address)?;
             return expr.generate_simple_arithmetic_equation();
@@ -189,8 +189,8 @@ impl exp::Expression {
         };
     }
     
-    pub fn apply_simple_arithmetic_equation_at(&self, addr: exp::Address) -> Option<Expression> {
-        let equation = self.generate_simple_artithmetic_equation_at(addr.clone())?;
+    pub fn apply_simple_arithmetic_equation_at(&self, addr: &exp::Address) -> Option<Expression> {
+        let equation = self.generate_simple_artithmetic_equation_at(addr)?;
         return self.apply_equation_at(equation, addr);
     }
 
