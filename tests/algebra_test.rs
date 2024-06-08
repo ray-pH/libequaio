@@ -3,6 +3,24 @@ use equaio::expression::Address;
 use equaio::arithmetic;
 use equaio::parser_prefix;
 use equaio::vec_strings;
+use equaio::algebra;
+
+
+#[cfg(test)]
+mod rule {
+    use super::*;
+    
+    #[test]
+    fn rule() {
+        let ctx = arithmetic::get_arithmetic_ctx();
+        for (name, rule_str, _) in algebra::ALGEBRA_RULE_STRING_TUPLE.iter() {
+            let rule_expr = parser_prefix::to_expression(rule_str, &ctx);
+            println!("{}", name);
+            assert!(rule_expr.is_some());
+        }
+    }
+    
+}
 
 #[cfg(test)]
 mod normalization {
@@ -100,7 +118,7 @@ mod simple_algebra {
         let expr = expr.apply_simple_arithmetic_equation_at(&address![1])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) / 2) = 2)");
-        let expr = expr.apply_fraction_aritmetic_at(0, 0, &address![0])
+        let expr = expr.apply_fraction_arithmetic_at(0, 0, &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((1 * x) / 1) = 2)");
         let expr = expr.apply_equation_at(x_div_one.clone(), &address![0])

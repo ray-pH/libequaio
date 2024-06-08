@@ -590,6 +590,58 @@ impl Expression {
     }
 }
 
+pub mod expression_builder {
+    use super::*;
+    pub fn constant(symbol: &str) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::ValueConst,
+            symbol : symbol.to_string(),
+            children : None,
+        };
+    }
+    
+    pub fn variable(symbol: &str) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::ValueVar,
+            symbol : symbol.to_string(),
+            children : None,
+        };
+    }
+    
+    pub fn equation(lhs: Expression, rhs: Expression) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::StatementOperatorBinary,
+            symbol : StatementSymbols::Equal.to_string(),
+            children : Some(vec![lhs, rhs]),
+        };
+    }
+    
+    pub fn unary(symbol: String, child: Expression) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::OperatorUnary,
+            symbol,
+            children : Some(vec![child]),
+        };
+    }
+    
+    pub fn binary(symbol: String, left: Expression, right: Expression) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::OperatorBinary,
+            symbol,
+            children : Some(vec![left, right]),
+        };
+    }
+    
+    pub fn nary(symbol: String, children: Vec<Expression>) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::OperatorNary,
+            symbol,
+            children : Some(children),
+        };
+    }
+    
+}
+
 pub fn empty_context() -> Context {
     return Context {
         parameters : vec![],

@@ -1,7 +1,9 @@
-use crate::expression::{empty_context, Address, Context, Expression, ExpressionType};
+use crate::expression::{empty_context, Address, Context, Expression, ExpressionType, expression_builder as eb};
+use crate::worksheet::{Action, ExpressionSequence, Rule};
 use crate::arithmetic::ArithmeticOperator;
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
+use std::collections::HashMap;
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -57,7 +59,7 @@ impl Expression {
             .apply_equation_at(fn_expr.clone(), &address![1]);
     }
     
-    pub fn apply_fraction_aritmetic_at(&self, numerator_id: usize, denominator_id: usize, addr: &Address) -> Option<Expression> {
+    pub fn apply_fraction_arithmetic_at(&self, numerator_id: usize, denominator_id: usize, addr: &Address) -> Option<Expression> {
         let expr = self.at(addr)?;
         let new_expr = expr.apply_fraction_arithmetic(numerator_id, denominator_id)?;
         return self.replace_expression_at(new_expr, addr);
@@ -96,4 +98,52 @@ impl Expression {
             children: Some(vec![numerator, denominator]),
         });
     }
+}
+
+impl ExpressionSequence {
+    pub fn apply_simple_arithmetic_to_both_side(&mut self, op: ArithmeticOperator, val_str: &str) -> bool {
+        let last_expr = self.last_expression();
+        let (name, fn_expr) = generate_simple_apply_arithmetic_to_both_side_action(op, val_str);
+        let expr = last_expr.apply_function_to_both_side(fn_expr);
+        return self.try_push(Action::ApplyAction(name), expr);
+    }
+    
+    pub fn apply_fraction_arithmetic_at(&mut self, numerator_id: usize, denominator_id: usize, addr: &Address) -> bool {
+        let last_expr= self.last_expression();
+        let expr = last_expr.apply_fraction_arithmetic_at(numerator_id, denominator_id, addr);
+        return self.try_push(Action::ApplyAction("Simplify fraction".to_string()), expr);
+    }
+}
+
+pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 7] = [
+    ("add_zero", "=(+(X,0),X)", "Add by Zero"),
+    ("zero_add", "=(+(0,X),X)", "Add by Zero"),
+    ("mul_one", "=(*(X,1),X)", "Multiply by One"),
+    ("one_mul", "=(*(1,X),X)", "Multiply by One"),
+    ("mul_zero", "=(*(X,0),0)", "Multiply by Zero"),
+    ("zero_mul", "=(*(0,X),0)", "Multiply by Zero"),
+    ("div_one", "=(/(X,1),X)", "Divide by One"),
+];
+pub fn get_algebra_rules(ctx: &Context) -> HashMap<String, Rule> {
+    let mut rules = HashMap::new();
+    for (rule_id, rule_str, rule_label) in ALGEBRA_RULE_STRING_TUPLE.iter() {
+        let rule_expr = parser_prefix::to_expression(rule_str, ctx).unwrap();
+        rules.insert(rule_id.to_string(), Rule {
+            id: rule_id.to_string(), 
+            expression: rule_expr,
+            label: rule_label.to_string(),
+        });
+    }
+    return rules;
+}
+
+
+fn generate_simple_apply_arithmetic_to_both_side_action(op: ArithmeticOperator, val_str: &str) -> (String,Expression) {
+    let name = format!("Apply {}{} to both side", op.to_string(), val_str);
+    // =(_(X),{op}(X,{val}))
+    let expression = eb::equation(
+        eb::nary("_".to_string(), vec![eb::variable("X")]),
+        eb::binary(op.to_string(), eb::variable("X"), eb::constant(val_str))
+    );
+    return (name, expression);
 }

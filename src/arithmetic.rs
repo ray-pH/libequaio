@@ -1,4 +1,5 @@
-use crate::expression::{Expression, ExpressionType, StatementSymbols};
+use crate::expression::{Expression, ExpressionType, StatementSymbols, Address};
+use crate::worksheet::{ExpressionSequence,Action};
 
 use super::expression as exp;
 
@@ -239,5 +240,18 @@ impl exp::Expression {
                 Some(result)
             },
         }
+    }
+}
+
+impl ExpressionSequence {
+    pub fn do_arithmetic_calculation_at(&mut self, addr: &Address) -> bool {
+        let last_expr = self.last_expression();
+        let name = format!(
+            "Calculate {}", 
+            last_expr.generate_simple_artithmetic_equation_at(addr)
+                .map(|e| e.to_string(false)).unwrap_or("".to_string())
+        );
+        let expr = last_expr.apply_simple_arithmetic_equation_at(addr);
+        return self.try_push(Action::ApplyAction(name), expr);
     }
 }
