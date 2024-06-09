@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-
 use crate::expression::Address;
-
 use super::expression::{Context, Expression};
+
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
 
 pub enum Action {
