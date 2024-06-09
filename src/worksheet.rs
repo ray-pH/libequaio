@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 use crate::expression::{empty_context, Address};
 use super::expression::{Context, Expression};
 
@@ -89,13 +89,17 @@ impl ExpressionSequence {
         self.history.push((action, expr));
     }
     
-    pub fn try_push<T>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
-        if let Ok(expr) = expr {
-            let expr = self.normalize(&expr);
-            self.push(action, expr);
-            return true;
-        } else {
-            return false;
+    pub fn try_push<T: Debug>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
+        match expr {
+            Ok(expr) => {
+                let expr = self.normalize(&expr);
+                self.push(action, expr);
+                return true;
+            },
+            Err(err) => {
+                dbg!(err);
+                return false;
+            }
         }
     }
     
