@@ -13,10 +13,11 @@ mod algebra_test {
     fn simple() {
         // solve 2*x - 1 = 3
         // BEGIN setup
-        let mut ws = Worksheet::new(arithmetic::get_arithmetic_ctx().add_param("x".to_string()));
+        let mut ws = Worksheet::new();
+        ws.set_expression_context(arithmetic::get_arithmetic_ctx().add_param("x".to_string()));
         ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-        ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.context).unwrap());
-        ws.set_rule_map(algebra::get_algebra_rules(&ws.context));
+        ws.set_rule_map(algebra::get_algebra_rules(&ws.get_expression_context()));
+        ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         // END setup
         let seq0 = ws.get_expression_sequence(0).unwrap();
         let status = seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Add, "1");

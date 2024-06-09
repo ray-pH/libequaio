@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use crate::expression::Address;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use crate::expression::{empty_context, Address};
 use super::expression::{Context, Expression};
 
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
@@ -10,18 +10,20 @@ pub enum Action {
     ApplyAction(String),
 }
 
-pub struct ExpressionSequence {
-    pub history: Vec<(Action, Expression)>,
-    pub context: Context,
+pub struct WorksheetContext {
+    expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
     rule_map: HashMap<String, Rule>,
 }
 
+pub struct ExpressionSequence {
+    pub history: Vec<(Action, Expression)>,
+    context: Rc<RefCell<WorksheetContext>>,
+}
+
 pub struct Worksheet {
     expression_sequences: Vec<ExpressionSequence>,
-    pub context: Context,
-    normalization_function: Option<NormalizationFunction>,
-    rule_map: HashMap<String, Rule>,
+    context: Rc<RefCell<WorksheetContext>>,
 }
 
 #[derive(Clone)]
@@ -46,12 +48,10 @@ impl Action {
 }
 
 impl ExpressionSequence {
-    pub fn new(expr: Expression, ctx: Context) -> ExpressionSequence {
+    pub fn new(expr: Expression, ctx: Rc<RefCell<WorksheetContext>>) -> ExpressionSequence {
         return ExpressionSequence {
             context: ctx,
             history: vec![(Action::Introduce, expr)],
-            normalization_function: None,
-            rule_map: HashMap::new(),
         };
     }
     
@@ -59,31 +59,21 @@ impl ExpressionSequence {
         return self.history.get(index).map(|(_, expr)| expr);
     }
     
-    pub fn set_normalization_function(&mut self, f: NormalizationFunction) {
-        self.normalization_function = Some(f);
-    }
-    
-    pub fn reset_rule_map(&mut self) { 
-        self.rule_map.clear(); 
-    }
-    pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        self.rule_map = rule_map; 
-    }
-    pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        self.rule_map.extend(rule_map); 
-    }
-    
     pub fn apply_rule_at(&mut self, rule_id: &str, addr: &Address) -> bool {
-        if let Some(rule) = self.rule_map.get(rule_id) {
+        let rule = {
+            let ctx = self.context.borrow();
+            ctx.rule_map.get(rule_id).cloned()
+        };
+        if let Some(rule) = rule {
             let rule_expr = rule.expression.clone();
             let expr = self.last_expression();
             let rule_label = format!("{}", rule.label);
             if rule_expr.is_equation() {
                 let new_expr = expr.apply_equation_at(rule_expr, addr);
-                return self.try_push(Action::ApplyRule(rule_label), new_expr)
+                return self.try_push(Action::ApplyRule(rule_label), new_expr);
             } else if rule_expr.is_implication() {
                 let new_expr = expr.apply_implication(rule_expr);
-                return self.try_push(Action::ApplyRule(rule_label), new_expr)
+                return self.try_push(Action::ApplyRule(rule_label), new_expr);
             }
             return false;
         } else {
@@ -110,8 +100,9 @@ impl ExpressionSequence {
     }
     
     fn normalize(&self, expr: &Expression) -> Expression {
-        if let Some(f) = self.normalization_function {
-            return f(expr, &self.context);
+        let ctx = self.context.borrow();
+        if let Some(f) = ctx.normalization_function {
+            return f(expr, &ctx.expression_context);
         } else {
             return expr.clone();
         }
@@ -121,44 +112,48 @@ impl ExpressionSequence {
 }
 
 impl Worksheet {
-    pub fn new(ctx: Context) -> Worksheet {
-        return Worksheet {
-            context: ctx,
-            expression_sequences: vec![],
+    pub fn new() -> Worksheet {
+        let ctx = WorksheetContext {
+            expression_context: empty_context(),
             normalization_function: None,
             rule_map: HashMap::new()
         };
+        return Worksheet {
+            context: Rc::new(RefCell::new(ctx)),
+            expression_sequences: vec![],
+        };
+    }
+    
+    pub fn set_expression_context(&mut self, expression_ctx: Context) {
+        let mut ctx = self.context.borrow_mut();
+        ctx.expression_context = expression_ctx;
+    }
+    
+    pub fn get_expression_context(&self) -> Context {
+        let ctx = self.context.borrow();
+        return ctx.expression_context.clone();
     }
     
     pub fn set_normalization_function(&mut self, f: NormalizationFunction) {
-        self.normalization_function = Some(f);
-        for seq in self.expression_sequences.iter_mut() {
-            seq.set_normalization_function(f);
-        }
+        let mut ctx = self.context.borrow_mut();
+        ctx.normalization_function = Some(f);
     }
     
     pub fn reset_rule_map(&mut self) { 
-        self.rule_map.clear(); 
+        let mut ctx = self.context.borrow_mut();
+        ctx.rule_map.clear();
     }
     pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        self.rule_map = rule_map; 
-        for seq in self.expression_sequences.iter_mut() {
-            seq.set_rule_map(self.rule_map.clone())
-        }
+        let mut ctx = self.context.borrow_mut();
+        ctx.rule_map = rule_map;
     }
     pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        self.rule_map.extend(rule_map); 
-        for seq in self.expression_sequences.iter_mut() {
-            seq.set_rule_map(self.rule_map.clone())
-        }
+        let mut ctx = self.context.borrow_mut();
+        ctx.rule_map.extend(rule_map);
     }
     
     pub fn introduce_expression(&mut self, expr: Expression) {
-        let mut sequence = ExpressionSequence::new(expr, self.context.clone());
-        if let Some(f) = self.normalization_function {
-            sequence.set_normalization_function(f);
-        }
-        sequence.set_rule_map(self.rule_map.clone());
+        let sequence = ExpressionSequence::new(expr, self.context.clone());
         self.expression_sequences.push(sequence);
     }
     
