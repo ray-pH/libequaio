@@ -204,7 +204,7 @@ mod pattern_matching {
         assert_eq!(map0.get("A").unwrap().to_string(true), "x");
         assert_eq!(map0.get("B").unwrap().to_string(true), "(y + z)");
         let map1 = expr.pattern_match_at(&pattern, &address![0]);
-        assert!(map1.is_none());
+        assert!(map1.is_err());
         let map2 = expr.pattern_match_at(&pattern, &address![1]).unwrap();
         assert_eq!(map2.get("A").unwrap().to_string(true), "y");
         assert_eq!(map2.get("B").unwrap().to_string(true), "z");
@@ -357,7 +357,7 @@ mod expression_replacement {
         assert_eq!(new_expr1.to_string(true),"(a + (d * e))");
         
         let new_expr2 = expr.replace_expression_at(expr_as_replacement.clone(), &address![].sub(2));
-        assert!(new_expr2.is_none());
+        assert!(new_expr2.is_err());
     }
 }
 

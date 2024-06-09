@@ -116,6 +116,18 @@ macro_rules! address {
 
 pub type MatchMap = HashMap<String,Expression>;
 
+#[derive(Debug)]
+pub enum ExpressionError {
+    InvalidAddress,
+    ImplicationLHSMismatch(String, String),
+    EquationLHSMismatch(String, String),
+    ExpressionContainsVariable,
+    PatternDoesNotMatch,
+    NotAnEquation,
+    NotAnImplication,
+    NotAnAssocTrain,
+}
+
 impl Expression {
     pub fn is_operator(&self) -> bool {
         match self.exp_type {
@@ -242,13 +254,15 @@ impl Expression {
     }
 
     /// Get the expression from the address
-    pub fn at(&self, address: &Address) -> Option<&Expression> {
+    pub fn at(&self, address: &Address) -> Result<&Expression, ExpressionError> {
         if address.path.len() == 0 { 
-            return Some(self)
+            return Ok(self)
         }
-        if self.children.is_none() { return None; }
+        if self.children.is_none() { return Err(ExpressionError::InvalidAddress); }
         let index = address.path[0];
-        if index >= self.children.as_ref().unwrap().len() { return None; }
+        if index >= self.children.as_ref().unwrap().len() { 
+            return Err(ExpressionError::InvalidAddress);
+        }
         return self.children.as_ref().unwrap()[index].at(&address.tail());
     }
     
@@ -335,14 +349,14 @@ impl Expression {
         }
     }
     
-    pub fn generate_subexpr_from_train(&self, sub_address: usize) -> Option<Expression> {
-        if !self.is_assoc_train() { return None; }
+    pub fn generate_subexpr_from_train(&self, sub_address: usize) -> Result<Expression, ExpressionError> {
+        if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
         let children = self.children.as_ref().unwrap();
         let children_len = children.len();
-        if sub_address+1 >= children_len { return None; }
+        if sub_address+1 >= children_len { return Err(ExpressionError::InvalidAddress); }
         let lhs = children[sub_address].clone();
         let rhs = children[sub_address+1].clone();
-        return Some(Expression{
+        return Ok(Expression{
             exp_type: ExpressionType::OperatorBinary,
             symbol: self.symbol.clone(),
             children: Some(vec![lhs, rhs]),
@@ -366,7 +380,7 @@ impl Expression {
         if check_children && self.is_assoc_train() {
             for i in 0..self.children.as_ref().unwrap().len()-1 {
                 let subexpr = self.generate_subexpr_from_train(i);
-                if let Some(sub) = subexpr {
+                if let Ok(sub) = subexpr {
                     let sub_matches = sub.f_get_patten_matches(pattern, &current_address.sub(i), false);
                     sub_matches.iter().for_each(|m| {
                         result.push(m.clone());
@@ -392,13 +406,15 @@ impl Expression {
     }
     
     /// Try to match the pattern expression with expression at the given address
-    pub fn pattern_match_at(&self, pattern: &Expression, addr: &Address) -> Option<MatchMap> {
+    pub fn pattern_match_at(&self, pattern: &Expression, addr: &Address) -> Result<MatchMap, ExpressionError> {
         let curr_node = self.at(addr)?;
         if let Some(sub_addr) = addr.sub {
             let sub_expr = curr_node.generate_subexpr_from_train(sub_addr)?;
-            return sub_expr.pattern_match_this_node(pattern);
+            return sub_expr.pattern_match_this_node(pattern)
+                .ok_or(ExpressionError::PatternDoesNotMatch);
         } else {
-            return curr_node.pattern_match_this_node(pattern);
+            return curr_node.pattern_match_this_node(pattern)
+                .ok_or(ExpressionError::PatternDoesNotMatch);
         }
     }
 
@@ -474,20 +490,22 @@ impl Expression {
     }
     
     /// Create a new expression by replacing the expression at the address with the new expression
-    pub fn replace_expression_at(&self, new_expr: Expression, addr: &Address) -> Option<Expression> {
+    pub fn replace_expression_at(&self, new_expr: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         if addr.path.len() == 0 { 
-            if addr.sub.is_none() { return Some(new_expr);  }
-            if !self.is_assoc_train() { return None; }
+            if addr.sub.is_none() { return Ok(new_expr);  }
+            if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
             return self.replace_expression_at_train(new_expr, addr.sub.unwrap());
         }
-        if self.children.is_none() { return None; }
-        if addr.head() >= self.children.as_ref().unwrap().len() { return None; }
+        if self.children.is_none() { return Err(ExpressionError::InvalidAddress); }
+        if addr.head() >= self.children.as_ref().unwrap().len() { 
+            return Err(ExpressionError::InvalidAddress);
+        }
         else {
             let new_child = self.children.as_ref().unwrap()[addr.head()]
                 .replace_expression_at(new_expr, &addr.tail())?;
             let mut new_children = self.children.as_ref().unwrap().clone();
             new_children[addr.head()] = new_child;
-            return Some(Expression {
+            return Ok(Expression {
                 exp_type : self.exp_type.clone(),
                 symbol : self.symbol.clone(),
                 children : Some(new_children),
@@ -495,13 +513,13 @@ impl Expression {
         }
     }
     
-    fn replace_expression_at_train(&self, new_expr: Expression, sub_address: usize) -> Option<Expression> {
-        if !self.is_assoc_train() { return None; }
+    fn replace_expression_at_train(&self, new_expr: Expression, sub_address: usize) -> Result<Expression, ExpressionError> {
+        if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
         let children = self.children.as_ref().unwrap();
-        if sub_address >= children.len()-1 { return None; }
+        if sub_address >= children.len()-1 { return Err(ExpressionError::InvalidAddress); }
         let left_children = children[0..sub_address].to_vec();
         let right_children = children[sub_address+2..children.len()].to_vec();
-        return Some(Expression {
+        return Ok(Expression {
             exp_type : self.exp_type.clone(),
             symbol : self.symbol.clone(),
             children : Some([left_children, vec![new_expr], right_children].concat()),
@@ -519,41 +537,44 @@ impl Expression {
             children : Some(vec![right, left]),
         };
     }
-    pub fn apply_equation_this_node(&self, equation: Expression) -> Option<Expression> {
+    pub fn apply_equation_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_this_node(equation);
     }
-    pub fn apply_equation_rtl_this_node(&self, equation: Expression) -> Option<Expression> {
+    pub fn apply_equation_rtl_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_this_node(equation.flip_equation());
     }
-    pub fn apply_equation_ltr_this_node(&self, equation: Expression) -> Option<Expression> {
-        if !equation.is_equation() { return None; }
+    pub fn apply_equation_ltr_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
+        if !equation.is_equation() { return Err(ExpressionError::NotAnEquation); }
         
-        let eq_children = equation.children.as_ref()?;
+        let eq_children = equation.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
         let lhs = eq_children[0].clone();
         
         if !equation.is_contain_variable() {
             // if the equation contains no variables (all of the values are parameters)
             // then the equation must match the current node
-            if !(&lhs == self) {  return None;  }
+            if !(&lhs == self) {
+                return Err(ExpressionError::EquationLHSMismatch(lhs.to_string(true), self.to_string(true))); 
+            }
             let rhs = eq_children[1].clone();
-            return Some(rhs);
+            return Ok(rhs);
         } else {
             // if the equation contains variables (not all of the value is parameters)
             // try to pattern match and transform the equation first
-            let match_map = self.pattern_match_this_node(&lhs)?;
+            let match_map = self.pattern_match_this_node(&lhs)
+                .ok_or(ExpressionError::PatternDoesNotMatch)?;
             let equation = equation.apply_match_map(&match_map);
             // if theres still a variable in the equation, then the equation is invalid
-            if equation.is_contain_variable() { return None; }
+            if equation.is_contain_variable() { return Err(ExpressionError::ExpressionContainsVariable); }
             return self.apply_equation_ltr_this_node(equation);
         }
     }
-    pub fn apply_equation_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
+    pub fn apply_equation_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_at(equation, addr);
     }
-    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
+    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_at(equation.flip_equation(), addr);
     }
-    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: &Address) -> Option<Expression> {
+    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         let expr = self.at(addr)?;
         if addr.sub.is_none() {
             let new_expr = expr.apply_equation_this_node(equation)?;
@@ -566,25 +587,28 @@ impl Expression {
         }
     }
     
-    pub fn apply_implication(&self, implication: Expression) -> Option<Expression>{
-        if !implication.is_implication() { return None; }
+    pub fn apply_implication(&self, implication: Expression) -> Result<Expression, ExpressionError>{
+        if !implication.is_implication() { return Err(ExpressionError::NotAnImplication); }
         
-        let impl_children = implication.children.as_ref()?;
+        let impl_children = implication.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
         let lhs = impl_children[0].clone();
         
         if !implication.is_contain_variable() {
             // if the implication contains no variables (all of the values are parameters)
             // then the implication must match the current node
-            if !(&lhs == self) {  return None;  }
+            if !(&lhs == self) { 
+                return Err(ExpressionError::ImplicationLHSMismatch(lhs.to_string(true), self.to_string(true)));  
+            }
             let rhs = impl_children[1].clone();
-            return Some(rhs);
+            return Ok(rhs);
         } else {
             // if the implication contains variables (not all of the value is parameters)
             // try to pattern match and transform the implication first
-            let match_map = self.pattern_match_this_node(&lhs)?;
+            let match_map = self.pattern_match_this_node(&lhs)
+                .ok_or(ExpressionError::PatternDoesNotMatch)?;
             let implication = implication.apply_match_map(&match_map);
             // if theres still a variable in the implication, then the implication is invalid
-            if implication.is_contain_variable() { return None; }
+            if implication.is_contain_variable() { return Err(ExpressionError::ExpressionContainsVariable); }
             return self.apply_implication(implication);
         }
     }

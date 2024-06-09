@@ -89,8 +89,8 @@ impl ExpressionSequence {
         self.history.push((action, expr));
     }
     
-    pub fn try_push(&mut self, action: Action, expr: Option<Expression>) -> bool {
-        if let Some(expr) = expr {
+    pub fn try_push<T>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
+        if let Ok(expr) = expr {
             let expr = self.normalize(&expr);
             self.push(action, expr);
             return true;

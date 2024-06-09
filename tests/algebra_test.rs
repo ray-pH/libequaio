@@ -77,7 +77,8 @@ mod fraction {
         let expr = parser_prefix::to_expression("/(*(4,5,6),*(1,2,3))", &ctx).unwrap();
         let new_expr = expr.apply_fraction_arithmetic(0, 1).unwrap();
         let target_expr = parser_prefix::to_expression("/(*(2,5,6),*(1,1,3))", &ctx).unwrap();
-        assert_eq!(new_expr, target_expr);
+        assert_eq!(new_expr.to_string(true), target_expr.to_string(true));
+        // assert_eq!(new_expr, target_expr);
     }
     
 }

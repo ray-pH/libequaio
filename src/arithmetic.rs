@@ -1,4 +1,4 @@
-use crate::expression::{Expression, ExpressionType, StatementSymbols, Address};
+use crate::expression::{Address, Expression, ExpressionError, ExpressionType, StatementSymbols};
 use crate::worksheet::{ExpressionSequence,Action};
 use super::expression as exp;
 
@@ -23,6 +23,20 @@ impl ArithmeticOperator {
             ArithmeticOperator::AddTrain => "+",
             ArithmeticOperator::MulTrain => "*",
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum ArithmeticError {
+    ExpressionErr(ExpressionError),
+    NotAnArithmeticTrainOperator,
+    NotNumeric,
+    CalculationError,
+}
+
+impl From<ExpressionError> for ArithmeticError {
+    fn from(err: ExpressionError) -> Self {
+        ArithmeticError::ExpressionErr(err)
     }
 }
 
@@ -150,36 +164,42 @@ impl exp::Expression {
         }
     }
     
-    pub fn generate_simple_arithmetic_equation(&self) -> Option<Expression> {
+    pub fn generate_simple_arithmetic_equation(&self) -> Result<Expression,ArithmeticError> {
         let normalized_self = self.normalize_handle_negative_unary_on_numerics();
-        if !normalized_self.is_directly_calculatable() { return None };
-        let val = normalized_self.calculate_numeric()?;
+        if !normalized_self.is_directly_calculatable() { 
+            return Err(ArithmeticError::NotNumeric);
+        };
+        let val = normalized_self.calculate_numeric().ok_or(ArithmeticError::CalculationError)?;
         let lhs = self.clone();
         let rhs = Expression {
             symbol: format!("{}", val),
             children: None,
             exp_type: ExpressionType::ValueConst,
         };
-        return Some(Expression {
+        return Ok(Expression {
             symbol: StatementSymbols::Equal.to_string(),
             children: Some(vec![lhs, rhs]),
             exp_type: ExpressionType::StatementOperatorBinary,
         })
     }
     
-    fn generate_expr_from_train_sub_address(&self, sub_address: usize) -> Option<Expression> {
-        if !self.is_arithmetic_train_operator() { return None; }
-        if sub_address+1 >= self.children.as_ref().unwrap().len() { return None; }
+    fn generate_expr_from_train_sub_address(&self, sub_address: usize) -> Result<Expression, ArithmeticError> {
+        if !self.is_arithmetic_train_operator() { 
+            return Err(ArithmeticError::NotAnArithmeticTrainOperator); 
+        }
+        if sub_address+1 >= self.children.as_ref().unwrap().len() { 
+            return Err(ArithmeticError::ExpressionErr(ExpressionError::InvalidAddress)); 
+        }
         let lhs = self.children.as_ref().unwrap()[sub_address].clone();
         let rhs = self.children.as_ref().unwrap()[sub_address+1].clone();
-        return Some(Expression {
+        return Ok(Expression {
             symbol: self.symbol.clone(),
             children: Some(vec![lhs, rhs]),
             exp_type: ExpressionType::OperatorBinary,
         });
     }
     
-    pub fn generate_simple_artithmetic_equation_at(&self, addr: &exp::Address) -> Option<Expression> {
+    pub fn generate_simple_artithmetic_equation_at(&self, addr: &exp::Address) -> Result<Expression, ArithmeticError> {
         let target = self.at(addr)?;
         if let Some(sub_address) = addr.sub {
             let expr = target.generate_expr_from_train_sub_address(sub_address)?;
@@ -189,9 +209,10 @@ impl exp::Expression {
         };
     }
     
-    pub fn apply_simple_arithmetic_equation_at(&self, addr: &exp::Address) -> Option<Expression> {
+    pub fn apply_simple_arithmetic_equation_at(&self, addr: &exp::Address) -> Result<Expression, ArithmeticError> {
         let equation = self.generate_simple_artithmetic_equation_at(addr)?;
-        return self.apply_equation_at(equation, addr);
+        let result = self.apply_equation_at(equation, addr)?;
+        return Ok(result);
     }
 
     /// Calculate the value of the expression if it is an arithmetic operation
