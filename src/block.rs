@@ -97,7 +97,7 @@ pub mod block_builder {
     }
     
     pub fn comma() -> Block {
-        symbol(",".to_string(), Address::empty())
+        symbol(",".to_string(), Address::default())
     }
     
     pub fn horizontal_container(children: Vec<Block>, addr: Address) -> Block {

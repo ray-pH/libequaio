@@ -48,7 +48,7 @@ pub struct Expression {
     pub children: Option<Vec<Expression>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Context {
     pub parameters: Vec<String>,
     pub unary_ops: Vec<String>,
@@ -78,16 +78,13 @@ impl Context {
 }
 
 
-#[derive(Clone,Debug, PartialEq)]
+#[derive(Clone,Debug,PartialEq,Default)]
 pub struct Address {
     pub path: Vec<usize>,
     pub sub: Option<usize>, // sub if for addressing subexpression in AssocTrain
 }
 
 impl Address {
-    pub fn empty() -> Self {
-        return Address { path: vec![], sub: None };
-    }
     pub fn new(path: Vec<usize>, sub: Option<usize>) -> Self {
         return Address { path, sub };
     }
@@ -364,7 +361,7 @@ impl Expression {
     }
 
     pub fn get_pattern_matches(&self, pattern: &Expression) -> Vec<(Address,MatchMap)> {
-        return self.f_get_patten_matches(pattern, &Address::empty(), true);
+        return self.f_get_patten_matches(pattern, &Address::default(), true);
     }
     
     /// Try to match the pattern expression with this expression, and all its children.
@@ -664,14 +661,4 @@ pub mod expression_builder {
         };
     }
     
-}
-
-pub fn empty_context() -> Context {
-    return Context {
-        parameters : vec![],
-        unary_ops  : vec![],
-        binary_ops : vec![],
-        assoc_ops  : vec![],
-        handle_numerics : false,
-    };
 }

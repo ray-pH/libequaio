@@ -1,5 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
-use crate::expression::{empty_context, Address};
+use crate::expression::Address;
 use super::expression::{Context, Expression};
 
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
@@ -10,6 +10,7 @@ pub enum Action {
     ApplyAction(String),
 }
 
+#[derive(Default)]
 pub struct WorksheetContext {
     expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
@@ -117,11 +118,7 @@ impl ExpressionSequence {
 
 impl Worksheet {
     pub fn new() -> Worksheet {
-        let ctx = WorksheetContext {
-            expression_context: empty_context(),
-            normalization_function: None,
-            rule_map: HashMap::new()
-        };
+        let ctx = WorksheetContext::default();
         return Worksheet {
             context: Rc::new(RefCell::new(ctx)),
             expression_sequences: vec![],
