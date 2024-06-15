@@ -113,6 +113,9 @@ mod get_possible_actions {
         assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,0]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0,0], address![0,1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
         
         let target = [
             ("Introduce", "(((2 * x) - 1) = 3)"),
@@ -122,6 +125,9 @@ mod get_possible_actions {
             ("Add by Zero", "((2 * x) = 4)"),
             ("Apply /2 to both side", "(((2 * x) / 2) = (4 / 2))"),
             ("Calculate 4 / 2 = 2", "(((2 * x) / 2) = 2)"),
+            ("Simplify fraction", "(((1 * x) / 1) = 2)"),
+            ("Divide by One", "((1 * x) = 2)"),
+            ("Multiply by One", "(x = 2)"),
         ];
         assert_eq!(seq0.history.len(), target.len());
         for (i, (target_action_str, target_expr_str)) in target.iter().enumerate() {

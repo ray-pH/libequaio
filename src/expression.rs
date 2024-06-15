@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, cmp::Ordering};
 use super::utils;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -84,7 +84,7 @@ impl Context {
 }
 
 
-#[derive(Clone,Debug,PartialEq,Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct Address {
     pub path: Vec<usize>,
     pub sub: Option<usize>, // sub if for addressing subexpression in AssocTrain
@@ -120,6 +120,17 @@ impl Address {
     pub fn take(&self, n: usize) -> Self {
         return Address { path: self.path[..n].to_vec(), sub: self.sub };
     }
+    pub fn to_vec(&self) -> Vec<usize> {
+        let mut v = self.path.clone();
+        if let Some(sub) = self.sub { v.push(sub); }
+        return v;
+    }
+    
+    pub fn common_ancestor(a: &Address, b: &Address) -> Address {
+        let mut i = 0;
+        while i < a.path.len() && i < b.path.len() && a.path[i] == b.path[i] { i += 1; }
+        return Address::new(a.path[..i].to_vec(), None);
+    }
     
     /// 0-th order cousin is sibling
     pub fn is_nth_cousin(&self, other: &Address, n: usize) -> bool {
@@ -142,8 +153,19 @@ impl Address {
         return self.is_nth_order_child_of(other, 2);
     }
     
-    
 }
+
+impl Ord for Address {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.to_vec().cmp(&other.to_vec())
+    }
+}
+impl PartialOrd for Address {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 
 #[macro_export]
 macro_rules! address {

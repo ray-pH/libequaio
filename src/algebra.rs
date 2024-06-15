@@ -23,7 +23,7 @@ pub enum AlgebraError {
     ExpressionErr(ExpressionError),
     FunctionApplicationError,
     NotAFunction,
-    NoAFraction,
+    NotAFraction,
 }
 
 impl From<ExpressionError> for AlgebraError {
@@ -98,7 +98,7 @@ impl Expression {
     
     pub fn apply_fraction_arithmetic(&self, numerator_id: usize, denominator_id: usize) -> Result<Expression, AlgebraError> {
         if self.identify_arithmetic_operator() != Some(ArithmeticOperator::Div) { 
-            return Err(AlgebraError::NoAFraction); 
+            return Err(AlgebraError::NotAFraction); 
         }
         let expr = self.normalize_fraction();
         let children = expr.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
@@ -211,6 +211,7 @@ pub mod get_possible_actions {
             apply_operation_both_side(expr, addr_vec),
             arithmetic::get_possible_actions::arithmetic(expr, context, addr_vec),
             expression::get_possible_actions::from_rule_map(expr, context, addr_vec),
+            apply_fraction_arithmetic(expr, addr_vec),
         ].into_iter().flatten().collect();
     }
     
@@ -242,5 +243,31 @@ pub mod get_possible_actions {
         let result_expr = expr.apply_simple_arithmetic_to_both_side(&inverse_op, &expr_target).ok()?;
         let action = Action::ApplyAction(generate_simple_apply_arithmetic_to_both_side_name(&inverse_op, &expr_target));
         return Some((action, result_expr));
+    }
+    
+    pub fn apply_fraction_arithmetic(expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>   {
+        match f_apply_fraction_arithmetic(expr, addr_vec) {
+            Some((action, new_expr)) => vec![(action, new_expr)],
+            None => vec![],
+        }
+    }
+    fn f_apply_fraction_arithmetic(expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>   {
+        if addr_vec.len() < 2 { return None; }
+        let addr0 = &addr_vec[addr_vec.len()-2];
+        let addr1 = &addr_vec[addr_vec.len()-1];
+        let addr_common_ancestor = Address::common_ancestor(addr0, addr1);
+        
+        let addr_num = std::cmp::min(addr0, addr1);
+        let addr_den = std::cmp::max(addr0, addr1);
+        
+        let addr_to_index = |addr: &Address| -> Option<usize> {
+            if addr.is_child_of(&addr_common_ancestor){ return Some(0); }
+            return addr.path.get(addr_common_ancestor.path.len()+1).copied();
+        };
+        
+        let numerator_id   = addr_to_index(addr_num)?;
+        let denominator_id = addr_to_index(addr_den)?;
+        let expr = expr.apply_fraction_arithmetic_at(numerator_id, denominator_id, &addr_common_ancestor).ok()?;
+        return Some((Action::ApplyAction("Simplify fraction".to_string()), expr));
     }
 }
