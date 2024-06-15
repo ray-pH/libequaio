@@ -40,6 +40,12 @@ impl StatementSymbols {
     }
 }
 
+#[derive(Clone)]
+pub struct Rule {
+    pub id: String,
+    pub expression: Expression,
+    pub label: String,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Expression {
@@ -96,12 +102,47 @@ impl Address {
     pub fn sub(&self, val: usize) -> Self {
         return Address { path: self.path.clone(), sub: Some(val) };
     }
+    pub fn no_sub(&self) -> Self {
+        return Address { path: self.path.clone(), sub: None };
+    }
     pub fn tail(&self) -> Self {
         return Address { path: self.path[1..].to_vec(), sub: self.sub };
     }
     pub fn head(&self) -> usize {
         return self.path[0];
     }
+    pub fn parent(&self) -> Self {
+        return Address { path: self.path[..self.path.len()-1].to_vec(), sub: self.sub };
+    }
+    pub fn is_empty(&self) -> bool {
+        return self.path.is_empty() && self.sub.is_none();
+    }
+    pub fn take(&self, n: usize) -> Self {
+        return Address { path: self.path[..n].to_vec(), sub: self.sub };
+    }
+    
+    /// 0-th order cousin is sibling
+    pub fn is_nth_cousin(&self, other: &Address, n: usize) -> bool {
+        if self.path.len() != other.path.len() { return false; }
+        if self.path.len() < n+1 { return false; }
+        return self.path[..self.path.len()-n-1] == other.path[..other.path.len()-n-1];
+    }
+    pub fn is_sibling(&self, other: &Address) -> bool {
+        return self.is_nth_cousin(other, 0);
+    }
+    pub fn is_nth_order_child_of(&self, other: &Address, n: usize) -> bool {
+        if self.path.len() != other.path.len() + n { return false; }
+        if self.path.len() < n { return false; }
+        return self.path[..self.path.len()-n] == other.path[..];
+    }
+    pub fn is_child_of(&self, other: &Address) -> bool {
+        return self.is_nth_order_child_of(other, 1);
+    }
+    pub fn is_grandchild_of(&self, other: &Address) -> bool {
+        return self.is_nth_order_child_of(other, 2);
+    }
+    
+    
 }
 
 #[macro_export]
@@ -123,6 +164,7 @@ pub enum ExpressionError {
     NotAnEquation,
     NotAnImplication,
     NotAnAssocTrain,
+    InvalidRule,
 }
 
 impl Expression {
@@ -534,13 +576,13 @@ impl Expression {
             children : Some(vec![right, left]),
         };
     }
-    pub fn apply_equation_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
+    pub fn apply_equation_this_node(&self, equation: &Expression) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_this_node(equation);
     }
-    pub fn apply_equation_rtl_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
-        return self.apply_equation_ltr_this_node(equation.flip_equation());
+    pub fn apply_equation_rtl_this_node(&self, equation: &Expression) -> Result<Expression, ExpressionError> {
+        return self.apply_equation_ltr_this_node(&equation.clone().flip_equation());
     }
-    pub fn apply_equation_ltr_this_node(&self, equation: Expression) -> Result<Expression, ExpressionError> {
+    pub fn apply_equation_ltr_this_node(&self, equation: &Expression) -> Result<Expression, ExpressionError> {
         if !equation.is_equation() { return Err(ExpressionError::NotAnEquation); }
         
         let eq_children = equation.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
@@ -562,16 +604,16 @@ impl Expression {
             let equation = equation.apply_match_map(&match_map);
             // if theres still a variable in the equation, then the equation is invalid
             if equation.is_contain_variable() { return Err(ExpressionError::ExpressionContainsVariable); }
-            return self.apply_equation_ltr_this_node(equation);
+            return self.apply_equation_ltr_this_node(&equation);
         }
     }
-    pub fn apply_equation_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
+    pub fn apply_equation_at(&self, equation: &Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         return self.apply_equation_ltr_at(equation, addr);
     }
-    pub fn apply_equation_rtl_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
-        return self.apply_equation_ltr_at(equation.flip_equation(), addr);
+    pub fn apply_equation_rtl_at(&self, equation: &Expression, addr: &Address) -> Result<Expression, ExpressionError> {
+        return self.apply_equation_ltr_at(&equation.clone().flip_equation(), addr);
     }
-    pub fn apply_equation_ltr_at(&self, equation: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
+    pub fn apply_equation_ltr_at(&self, equation: &Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         let expr = self.at(addr)?;
         if addr.sub.is_none() {
             let new_expr = expr.apply_equation_this_node(equation)?;
@@ -584,7 +626,7 @@ impl Expression {
         }
     }
     
-    pub fn apply_implication(&self, implication: Expression) -> Result<Expression, ExpressionError>{
+    pub fn apply_implication(&self, implication: &Expression) -> Result<Expression, ExpressionError>{
         if !implication.is_implication() { return Err(ExpressionError::NotAnImplication); }
         
         let impl_children = implication.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
@@ -606,8 +648,18 @@ impl Expression {
             let implication = implication.apply_match_map(&match_map);
             // if theres still a variable in the implication, then the implication is invalid
             if implication.is_contain_variable() { return Err(ExpressionError::ExpressionContainsVariable); }
-            return self.apply_implication(implication);
+            return self.apply_implication(&implication);
         }
+    }
+    
+    pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
+        let rule_expr = &rule.expression;
+        if rule_expr.is_equation() {
+            return self.apply_equation_at(rule_expr, addr);
+        } else if rule_expr.is_implication() {
+            return self.apply_implication(rule_expr);
+        }
+        return Err(ExpressionError::InvalidRule);
     }
 }
 
@@ -661,4 +713,24 @@ pub mod expression_builder {
         };
     }
     
+}
+
+// type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
+pub mod get_possible_actions {
+    use crate::worksheet::{Action, WorksheetContext};
+
+    use super::*;
+    pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+        if addr_vec.len() <= 0 { return vec![]; }
+        let addr = &addr_vec[0];
+        let rule_map = &context.rule_map;
+        let mut possible_actions = Vec::new();
+        for (_, rule) in rule_map.iter() {
+            if let Ok(new_expr) = expr.apply_rule_at(&rule, addr) {
+                let action = Action::ApplyRule(rule.label.clone());
+                possible_actions.push((action, new_expr));
+            }
+        }
+        return possible_actions;
+    }
 }

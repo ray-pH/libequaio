@@ -120,13 +120,13 @@ mod simplification {
         let action_addr = &address![0];
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((1 + 2) = 3)");
-        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        let expr = expr.apply_equation_at(&equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "(3 + 3)");
         
         let action_addr = &address![];
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((3 + 3) = 6)");
-        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        let expr = expr.apply_equation_at(&equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "6");
     }
     
@@ -138,13 +138,13 @@ mod simplification {
         let action_addr = &address![].sub(0);
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((1 + 2) = 3)");
-        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        let expr = expr.apply_equation_at(&equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "(3 + 3)");
         
         let action_addr = &address![];
         let equation = expr.generate_simple_artithmetic_equation_at(action_addr).unwrap();
         assert_eq!(equation.to_string(true), "((3 + 3) = 6)");
-        let expr = expr.apply_equation_at(equation, action_addr).unwrap();
+        let expr = expr.apply_equation_at(&equation, action_addr).unwrap();
         assert_eq!(expr.to_string(true), "6");
     }
 }

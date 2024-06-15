@@ -382,7 +382,7 @@ mod apply_equation {
         assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
         let applied_eq = rule_eq.apply_match_map(&match_map);
         assert_eq!(applied_eq.to_string(true), "((a + 0) = a)");
-        let new_expr = expr.apply_equation_ltr_this_node(applied_eq).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(&applied_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "a");
     }
     
@@ -403,7 +403,7 @@ mod apply_equation {
         assert_eq!(match_map.get("X").unwrap().to_string(true), "a");
         let applied_eq = rule_eq.apply_match_map(&match_map);
         assert_eq!(applied_eq.to_string(true), "((a + 0) = a)");
-        let new_expr = expr.apply_equation_ltr_at(applied_eq, &address![0]).unwrap();
+        let new_expr = expr.apply_equation_ltr_at(&applied_eq, &address![0]).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
     
@@ -419,7 +419,7 @@ mod apply_equation {
         
         let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
-        let new_expr = expr.apply_equation_ltr_this_node(rule_eq).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(&rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "a");
     }
     
@@ -435,7 +435,7 @@ mod apply_equation {
         
         let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
-        let new_expr = expr.apply_equation_rtl_this_node(rule_eq).unwrap();
+        let new_expr = expr.apply_equation_rtl_this_node(&rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "((a + 0) + 0)");
     }
     
@@ -451,7 +451,7 @@ mod apply_equation {
         
         let expr = parser_prefix::to_expression("+(a,b,0)", &ctx).unwrap();
         let rule_eq = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
-        let new_expr = expr.apply_equation_at(rule_eq, &address![].sub(1)).unwrap();
+        let new_expr = expr.apply_equation_at(&rule_eq, &address![].sub(1)).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
 }
@@ -474,7 +474,7 @@ mod apply_implication {
         let rule = parser_prefix::to_expression("=>( =(+(X,Y),X), =(Y,0))", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "((a + b) = a)");
         assert_eq!(rule.to_string(true), "(((X + Y) = X) => (Y = 0))");
-        let new_expr = expr.apply_implication(rule).unwrap();
+        let new_expr = expr.apply_implication(&rule).unwrap();
         assert_eq!(new_expr.to_string(true), "(b = 0)");
     }
 }

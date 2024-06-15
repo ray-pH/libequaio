@@ -1,5 +1,5 @@
 use crate::expression::{Address, Expression, ExpressionError, ExpressionType, StatementSymbols};
-use crate::worksheet::{ExpressionSequence,Action};
+use crate::worksheet::{ExpressionSequence, Action, WorksheetContext};
 use super::expression as exp;
 
 #[derive(PartialEq, Clone)]
@@ -22,6 +22,18 @@ impl ArithmeticOperator {
             // ArithmeticOperator::Reciprocal => "/",
             ArithmeticOperator::AddTrain => "+",
             ArithmeticOperator::MulTrain => "*",
+        }
+    }
+    pub fn inverse(&self) -> Self {
+        use ArithmeticOperator::*;
+        match self {
+            Add => Sub,
+            Sub => Add,
+            Mul => Div,
+            Div => Mul,
+            AddTrain => Sub,
+            MulTrain => Div,
+            Negative => Negative,
         }
     }
 }
@@ -164,6 +176,46 @@ impl exp::Expression {
         }
     }
     
+    // (a + (-b))
+    fn is_add_negative(&self) -> bool {
+        if self.identify_arithmetic_operator() != Some(ArithmeticOperator::Add) { return false; }
+        if self.children.is_none() { return false; }
+        let children = self.children.as_ref().unwrap();
+        if children.len() != 2 { return false; }
+        if children[1].identify_arithmetic_operator() != Some(ArithmeticOperator::Negative) { return false; }
+        return true;
+    }
+    pub fn normalize_add_negative_to_sub(&self) -> Expression {
+        match self.identify_arithmetic_operator() {
+            Some(ArithmeticOperator::Add) if self.is_add_negative() => {
+                let children = self.children.as_ref().unwrap();
+                let left = children[0].clone();
+                let right = children[1].clone();
+                let right_children = right.children.as_ref().map(|v| v.get(0))
+                    .expect("Negative operator should have children")
+                    .expect("Negative operator should have one children")
+                    .clone();
+                return Expression {
+                    exp_type : ExpressionType::OperatorBinary,
+                    symbol   : ArithmeticOperator::Sub.to_string(),
+                    children : Some(vec![left, right_children])
+                };
+            },
+            _ if self.children.is_some() => {
+                let children = self.children.as_ref().unwrap();
+                let normalized_children = children.iter().map(|c| c.normalize_add_negative_to_sub()).collect();
+                return Expression {
+                    exp_type : self.exp_type.clone(),
+                    symbol   : self.symbol.clone(),
+                    children : Some(normalized_children)
+                }
+            }
+            _ => {
+                return self.clone();
+            }
+        }
+    }
+    
     pub fn generate_simple_arithmetic_equation(&self) -> Result<Expression,ArithmeticError> {
         let normalized_self = self.normalize_handle_negative_unary_on_numerics();
         if !normalized_self.is_directly_calculatable() { 
@@ -211,7 +263,7 @@ impl exp::Expression {
     
     pub fn apply_simple_arithmetic_equation_at(&self, addr: &exp::Address) -> Result<Expression, ArithmeticError> {
         let equation = self.generate_simple_artithmetic_equation_at(addr)?;
-        let result = self.apply_equation_at(equation, addr)?;
+        let result = self.apply_equation_at(&equation, addr)?;
         return Ok(result);
     }
 
@@ -273,5 +325,29 @@ impl ExpressionSequence {
         );
         let expr = last_expr.apply_simple_arithmetic_equation_at(addr);
         return self.try_push(Action::ApplyAction(name), expr);
+    }
+}
+
+// type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
+pub mod get_possible_actions {
+
+    use super::*;
+    pub fn arithmetic(expr: &Expression, _context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+        return arithmetic_calculation(expr, addr_vec);
+    }
+    
+    pub fn arithmetic_calculation(root_expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+        match f_arithmetic_calculation(root_expr, addr_vec) {
+            Some((action, new_expr)) => vec![(action, new_expr)],
+            None => vec![],
+        }
+    }
+    fn f_arithmetic_calculation(root_expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>  {
+        if addr_vec.len() < 1 { return None; }
+        let addr = &addr_vec[addr_vec.len()-1];
+        let result = root_expr.apply_simple_arithmetic_equation_at(addr).ok()?;
+        let equation_expr = root_expr.generate_simple_artithmetic_equation_at(addr).ok()?;
+        let name = format!("Calculate {}",  equation_expr.to_string(false));
+        return Some((Action::ApplyAction(name), result));
     }
 }

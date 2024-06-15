@@ -1,9 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
-use crate::expression::Address;
+use crate::expression::{Address, Rule};
 use super::expression::{Context, Expression};
 
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
+type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, &Vec<Address>) -> Vec<(Action,Expression)>;
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum Action {
     Introduce,
     ApplyRule(String),
@@ -14,7 +16,8 @@ pub enum Action {
 pub struct WorksheetContext {
     expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
-    rule_map: HashMap<String, Rule>,
+    pub rule_map: HashMap<String, Rule>,
+    get_possible_actions_function: Option<GetPossibleActionsFunction>,
 }
 
 pub struct ExpressionSequence {
@@ -25,13 +28,6 @@ pub struct ExpressionSequence {
 pub struct Worksheet {
     expression_sequences: Vec<ExpressionSequence>,
     context: Rc<RefCell<WorksheetContext>>,
-}
-
-#[derive(Clone)]
-pub struct Rule {
-    pub id: String,
-    pub expression: Expression,
-    pub label: String,
 }
 
 impl Action {
@@ -49,10 +45,10 @@ impl Action {
 }
 
 impl ExpressionSequence {
-    pub fn new(expr: Expression, ctx: Rc<RefCell<WorksheetContext>>) -> ExpressionSequence {
+    pub fn new(ctx: Rc<RefCell<WorksheetContext>>) -> ExpressionSequence {
         return ExpressionSequence {
             context: ctx,
-            history: vec![(Action::Introduce, expr)],
+            history: vec![],
         };
     }
     
@@ -66,17 +62,10 @@ impl ExpressionSequence {
             ctx.rule_map.get(rule_id).cloned()
         };
         if let Some(rule) = rule {
-            let rule_expr = rule.expression.clone();
             let expr = self.last_expression();
             let rule_label = format!("{}", rule.label);
-            if rule_expr.is_equation() {
-                let new_expr = expr.apply_equation_at(rule_expr, addr);
-                return self.try_push(Action::ApplyRule(rule_label), new_expr);
-            } else if rule_expr.is_implication() {
-                let new_expr = expr.apply_implication(rule_expr);
-                return self.try_push(Action::ApplyRule(rule_label), new_expr);
-            }
-            return false;
+            let result_expr = expr.apply_rule_at(&rule, addr);
+            return self.try_push(Action::ApplyRule(rule_label), result_expr);
         } else {
             return false;
         }
@@ -87,13 +76,13 @@ impl ExpressionSequence {
     }
     
     pub fn push(&mut self, action: Action, expr: Expression) {
+        let expr = self.normalize(&expr);
         self.history.push((action, expr));
     }
     
     pub fn try_push<T: Debug>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
         match expr {
             Ok(expr) => {
-                let expr = self.normalize(&expr);
                 self.push(action, expr);
                 return true;
             },
@@ -110,6 +99,25 @@ impl ExpressionSequence {
             return f(expr, &ctx.expression_context);
         } else {
             return expr.clone();
+        }
+    }
+    
+    pub fn get_possible_actions(&self, addr_vec: &Vec<Address>) -> Vec<(Action,Expression)> {
+        let ctx = self.context.borrow();
+        if let Some(f) = ctx.get_possible_actions_function {
+            return f(self.last_expression(), &ctx, addr_vec).into_iter()
+                .map(|(action, expr)| {(action, self.normalize(&expr))}).collect();
+        } else {
+            return vec![];
+        }
+    }
+    
+    pub fn try_apply_action_by_index(&mut self, addr_vec: &Vec<Address>, index: usize) -> bool {
+        if let Some((action, expr)) = self.get_possible_actions(addr_vec).get(index) {
+            self.push(action.clone(), expr.clone());
+            return true;
+        } else {
+            return false;
         }
     }
     
@@ -140,6 +148,11 @@ impl Worksheet {
         ctx.normalization_function = Some(f);
     }
     
+    pub fn set_get_possible_actions_function(&mut self, f: GetPossibleActionsFunction) {
+        let mut ctx = self.context.borrow_mut();
+        ctx.get_possible_actions_function = Some(f);
+    }
+    
     pub fn reset_rule_map(&mut self) { 
         let mut ctx = self.context.borrow_mut();
         ctx.rule_map.clear();
@@ -154,7 +167,8 @@ impl Worksheet {
     }
     
     pub fn introduce_expression(&mut self, expr: Expression) {
-        let sequence = ExpressionSequence::new(expr, self.context.clone());
+        let mut sequence = ExpressionSequence::new(self.context.clone());
+        sequence.push(Action::Introduce, expr);
         self.expression_sequences.push(sequence);
     }
     

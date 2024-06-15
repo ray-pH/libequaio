@@ -1,10 +1,13 @@
-use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, expression_builder as eb};
-use crate::worksheet::{Action, ExpressionSequence, Rule};
+use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, Rule, expression_builder as eb};
+use crate::worksheet::{Action, ExpressionSequence, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
 use std::collections::HashMap;
 use lazy_static::lazy_static;
+
+// this is a module for algebra (with arithmetic)
+// for abstract algebra, we will create a new module (algebra_abstract.rs)
 
 lazy_static! {
     // because this pattern is extremely common, i think it's a good idea to hardcode it
@@ -50,6 +53,7 @@ impl Expression {
             .normalize_sub_to_negative()
             .normalize_to_assoc_train(&ctx.assoc_ops)
             .normalize_two_children_assoc_train_to_binary_op(&ctx.binary_ops)
+            .normalize_add_negative_to_sub()
             .normalize_single_children_assoc_train()
     }
     
@@ -76,10 +80,10 @@ impl Expression {
         // A = B => _(A) = _(B)
         let rule_expr = FUNCTION_APPLICATION_TO_BOTH_SIDE_EXPR.substitute_symbol("_".to_string(), fn_symbol);
         // wrapped_expr : _(A) = _(B)
-        let wrapped_expr = self.apply_implication(rule_expr)?;
+        let wrapped_expr = self.apply_implication(&rule_expr)?;
         let result_expr = wrapped_expr
-            .apply_equation_at(fn_expr.clone(), &address![0])?
-            .apply_equation_at(fn_expr.clone(), &address![1])?;
+            .apply_equation_at(&fn_expr, &address![0])?
+            .apply_equation_at(&fn_expr, &address![1])?;
         return Ok(result_expr);
     }
     
@@ -138,13 +142,20 @@ impl Expression {
             children: Some(vec![new_numerator, new_denominator]),
         });
     }
+    
+    pub fn apply_simple_arithmetic_to_both_side(&self, op: &ArithmeticOperator, expr: &Expression) 
+    -> Result<Expression, AlgebraError> 
+    {
+        let fn_expr = generate_simple_apply_arithmetic_to_both_side_expr(op, expr);
+        let expr = self.apply_function_to_both_side(fn_expr)?;
+        return Ok(expr);
+    }
 }
 
 impl ExpressionSequence {
-    pub fn apply_simple_arithmetic_to_both_side(&mut self, op: ArithmeticOperator, val_str: &str) -> bool {
-        let last_expr = self.last_expression();
-        let (name, fn_expr) = generate_simple_apply_arithmetic_to_both_side_action(op, val_str);
-        let expr = last_expr.apply_function_to_both_side(fn_expr);
+    pub fn apply_simple_arithmetic_to_both_side(&mut self, op: ArithmeticOperator, expr: &Expression) -> bool {
+        let name = generate_simple_apply_arithmetic_to_both_side_name(&op, expr);
+        let expr = self.last_expression().apply_simple_arithmetic_to_both_side(&op, expr);
         return self.try_push(Action::ApplyAction(name), expr);
     }
     
@@ -157,7 +168,7 @@ impl ExpressionSequence {
 
 pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 7] = [
     ("add_zero", "=(+(X,0),X)", "Add by Zero"),
-    ("zero_add", "=(+(0,X),X)", "Add by Zero"),
+    ("zero_add", "=(+(0,X),X)", "Add by Zero", ),
     ("mul_one", "=(*(X,1),X)", "Multiply by One"),
     ("one_mul", "=(*(1,X),X)", "Multiply by One"),
     ("mul_zero", "=(*(X,0),0)", "Multiply by Zero"),
@@ -178,12 +189,58 @@ pub fn get_algebra_rules(ctx: &Context) -> HashMap<String, Rule> {
 }
 
 
-fn generate_simple_apply_arithmetic_to_both_side_action(op: ArithmeticOperator, val_str: &str) -> (String,Expression) {
-    let name = format!("Apply {}{} to both side", op.to_string(), val_str);
-    // =(_(X),{op}(X,{val}))
-    let expression = eb::equation(
+fn generate_simple_apply_arithmetic_to_both_side_expr(op: &ArithmeticOperator, expr: &Expression) -> Expression {
+    // =(_(X),{op}(X,{expr}))
+    return eb::equation(
         eb::nary("_".to_string(), vec![eb::variable("X")]),
-        eb::binary(op.to_string(), eb::variable("X"), eb::constant(val_str))
+        eb::binary(op.to_string(), eb::variable("X"), expr.clone())
     );
-    return (name, expression);
+}
+fn generate_simple_apply_arithmetic_to_both_side_name(op: &ArithmeticOperator, expr: &Expression) -> String {
+    return format!("Apply {}{} to both side", op.to_string(), expr.to_string(true));
+}
+
+// type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
+pub mod get_possible_actions {
+    use crate::arithmetic;
+    use crate::expression;
+
+    use super::*;
+    pub fn algebra(expr: &Expression, context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+        return vec![
+            apply_operation_both_side(expr, addr_vec),
+            arithmetic::get_possible_actions::arithmetic(expr, context, addr_vec),
+            expression::get_possible_actions::from_rule_map(expr, context, addr_vec),
+        ].into_iter().flatten().collect();
+    }
+    
+    pub fn apply_operation_both_side(expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>   {
+        match f_apply_operation_both_side(expr, addr_vec) {
+            Some((action, new_expr)) => vec![(action, new_expr)],
+            None => vec![],
+        }
+    }
+    fn f_apply_operation_both_side(expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>   {
+        if addr_vec.len() < 2 { return None; }
+        let addr0 = &addr_vec[addr_vec.len()-2]; // =
+        let addr1 = &addr_vec[addr_vec.len()-1];
+        // addr0 should be equation and add1 should be its grandchild
+        
+        let should_be_equation_expr = expr.at(addr0).ok()?;
+        if !addr0.is_empty() { return None; }
+        if !should_be_equation_expr.is_equation() { return None; }
+        if addr1.path.len() < 2 { return None; }
+        
+        let addr_target = addr1.take(2).no_sub();
+        let addr_parent = addr_target.parent();
+        let expr_parent = expr.at(&addr_parent).ok()?;
+        
+        let parent_arithmetic_op = expr_parent.identify_arithmetic_operator()?;
+        let inverse_op = parent_arithmetic_op.inverse();
+        let expr_target = expr.at(&addr_target).ok()?;
+        
+        let result_expr = expr.apply_simple_arithmetic_to_both_side(&inverse_op, &expr_target).ok()?;
+        let action = Action::ApplyAction(generate_simple_apply_arithmetic_to_both_side_name(&inverse_op, &expr_target));
+        return Some((action, result_expr));
+    }
 }
