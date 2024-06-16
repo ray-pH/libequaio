@@ -18,6 +18,9 @@ pub enum ExpressionType {
     // it requires a lot of application of the associative property
     AssocTrain, 
 }
+impl Default for ExpressionType {
+    fn default() -> Self { ExpressionType::ValueConst }
+}
 
 pub enum StatementSymbols {
     Equal,
@@ -40,14 +43,14 @@ impl StatementSymbols {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Rule {
     pub id: String,
     pub expression: Expression,
     pub label: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct Expression {
     pub exp_type: ExpressionType,
     pub symbol: String,

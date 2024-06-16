@@ -7,8 +7,11 @@ pub enum BlockType {
     // VerticalContainer,
     FractionContainer,
 }
+impl Default for BlockType {
+    fn default() -> Self { BlockType::Symbol }
+}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Block {
     pub block_type: BlockType,
     pub address: Address,
