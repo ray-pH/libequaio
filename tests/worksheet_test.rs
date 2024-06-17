@@ -15,7 +15,7 @@ mod algebra_test {
         let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
-        let seq0 = ws.get_expression_sequence(0).unwrap();
+        let seq0 = ws.get_mut_expression_sequence(0).unwrap();
         let status = seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Add, &eb::constant("1"));
         assert!(status);
         let status = seq0.do_arithmetic_calculation_at(&address![1]);
@@ -90,7 +90,7 @@ mod get_possible_actions {
         let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
-        let seq0 = ws.get_expression_sequence(0).unwrap();
+        let seq0 = ws.get_mut_expression_sequence(0).unwrap();
         assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![0].sub(1)], 0));

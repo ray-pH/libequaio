@@ -123,7 +123,6 @@ impl ExpressionSequence {
         }
     }
     
-    
 }
 
 impl Worksheet {
@@ -174,11 +173,15 @@ impl Worksheet {
         self.expression_sequences.push(sequence);
     }
     
-    pub fn get_expression_sequence(&mut self, index: usize) -> Option<&mut ExpressionSequence> {
+    pub fn get_expression_sequence(&self, index: usize) -> Option<&ExpressionSequence> {
+        return self.expression_sequences.get(index);
+    }
+    
+    pub fn get_mut_expression_sequence(&mut self, index: usize) -> Option<&mut ExpressionSequence> {
         return self.expression_sequences.get_mut(index);
     }
     
     pub fn get(&mut self, index: usize) -> Option<&mut ExpressionSequence> {
-        return self.get_expression_sequence(index);
+        return self.get_mut_expression_sequence(index);
     }
 }
