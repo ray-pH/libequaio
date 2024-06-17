@@ -1,9 +1,9 @@
-use equaio::worksheet::Worksheet;
+use equaio::worksheet::{Worksheet,Action};
 use equaio::parser_prefix;
 use equaio::arithmetic;
 use equaio::address;
 use equaio::expression::{Address, expression_builder as eb};
-use equaio::algebra;
+use equaio::vec_strings;
 
 #[cfg(test)]
 mod algebra_test {
@@ -12,13 +12,9 @@ mod algebra_test {
     #[test]
     fn simple() {
         // solve 2*x - 1 = 3
-        // BEGIN setup
-        let mut ws = Worksheet::new();
-        ws.set_expression_context(arithmetic::get_arithmetic_ctx().add_param("x".to_string()));
-        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-        ws.set_rule_map(algebra::get_algebra_rules(&ws.get_expression_context()));
+        let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
-        // END setup
+        
         let seq0 = ws.get_expression_sequence(0).unwrap();
         let status = seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Add, &eb::constant("1"));
         assert!(status);
@@ -62,19 +58,12 @@ mod algebra_test {
 
 #[cfg(test)]
 mod get_possible_actions {
-    use equaio::worksheet::Action;
-
     use super::*;
     
     #[test]
     fn arithmetic_both_side_given_inner() {
         // x = 3 / (1-x)
-        let mut ws = Worksheet::new();
-        ws.set_expression_context(arithmetic::get_arithmetic_ctx().add_param("x".to_string()));
-        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-        ws.set_rule_map(algebra::get_algebra_rules(&ws.get_expression_context()));
-        ws.set_get_possible_actions_function(|expr,_ctx,addr_vec| 
-            algebra::get_possible_actions::apply_operation_both_side(expr,addr_vec));
+        let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
         let expr = parser_prefix::to_expression("=(x,/(3,-(1,x)))", &ws.get_expression_context()).unwrap();
         ws.introduce_expression(expr.clone());
         
@@ -98,12 +87,7 @@ mod get_possible_actions {
     #[test]
     fn simple() {
         // solve x - 1 = 3
-        let mut ws = Worksheet::new();
-        ws.set_expression_context(arithmetic::get_arithmetic_ctx().add_param("x".to_string()));
-        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-        ws.set_rule_map(algebra::get_algebra_rules(&ws.get_expression_context()));
-        ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
-            algebra::get_possible_actions::algebra(expr,ctx,addr_vec));
+        let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
         let seq0 = ws.get_expression_sequence(0).unwrap();

@@ -1,6 +1,6 @@
 use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, Rule, expression_builder as eb};
-use crate::worksheet::{Action, ExpressionSequence, WorksheetContext};
-use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
+use crate::worksheet::{Action, ExpressionSequence, Worksheet, WorksheetContext};
+use crate::arithmetic::{ArithmeticOperator, ArithmeticError, get_arithmetic_ctx};
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
 use std::collections::HashMap;
@@ -163,6 +163,19 @@ impl ExpressionSequence {
         let last_expr= self.last_expression();
         let expr = last_expr.apply_fraction_arithmetic_at(numerator_id, denominator_id, addr);
         return self.try_push(Action::ApplyAction("Simplify fraction".to_string()), expr);
+    }
+}
+
+impl Worksheet {
+    pub fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
+        let mut ws = Worksheet::new();
+        let ctx = get_arithmetic_ctx().add_params(variables);
+        ws.set_expression_context(ctx);
+        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
+        ws.set_rule_map(get_algebra_rules(&ws.get_expression_context()));
+        ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
+            get_possible_actions::algebra(expr,ctx,addr_vec));
+        return ws;
     }
 }
 
