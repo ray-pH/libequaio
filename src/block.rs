@@ -19,39 +19,46 @@ pub struct Block {
     pub children: Option<Vec<Block>>,
 }
 
+impl From<Expression> for Block {
+    fn from(expr: Expression) -> Self {
+        return Block::from_expression(&expr, Address::default())
+    }
+}
+
 impl Block {
-    pub fn from_expression(expr: Expression, addr: Address) -> Block {
+    pub fn from_expression(expr: &Expression, addr: Address) -> Block {
+        let symbol = expr.symbol.clone();
         return match expr.exp_type {
             ExpressionType::ValueConst | ExpressionType::ValueVar => {
-                block_builder::symbol(expr.symbol, addr)
+                block_builder::symbol(symbol, addr)
             },
             ExpressionType::OperatorUnary => {
-                let operator_block = block_builder::symbol(expr.symbol, addr.clone());
-                let expr_children = expr.children.expect("UnaryOps have one child");
+                let operator_block = block_builder::symbol(symbol, addr.clone());
+                let expr_children = expr.children.as_ref().expect("UnaryOps have one child");
                 let operand_addr = addr.append(0);
-                let operand_expr = expr_children.get(0).expect("UnaryOps have one child").clone();
+                let operand_expr = expr_children.get(0).expect("UnaryOps have one child");
                 let operand_block = Block::from_expression(operand_expr, operand_addr);
                 block_builder::horizontal_container(vec![operator_block, operand_block], addr)
             },
             ExpressionType::StatementOperatorBinary |
             ExpressionType::OperatorBinary => {
-                let operator_block = block_builder::symbol(expr.symbol, addr.clone());
-                let expr_children = expr.children.expect("BinaryOps have two children");
+                let operator_block = block_builder::symbol(symbol, addr.clone());
+                let expr_children = expr.children.as_ref().expect("BinaryOps have two children");
                 let left_addr = addr.append(0);
-                let left_expr = expr_children.get(0).expect("BinaryOps have two children").clone();
+                let left_expr = expr_children.get(0).expect("BinaryOps have two children");
                 let left_block = Block::from_expression(left_expr, left_addr);
                 let right_addr = addr.append(1);
-                let right_expr = expr_children.get(1).expect("BinaryOps have two children").clone();
+                let right_expr = expr_children.get(1).expect("BinaryOps have two children");
                 let right_block = Block::from_expression(right_expr, right_addr);
                 block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
             },
             ExpressionType::OperatorNary => {
-                let operator_block = block_builder::symbol(expr.symbol, addr.clone());
-                let expr_children = expr.children.expect("NaryOps have children");
+                let operator_block = block_builder::symbol(symbol, addr.clone());
+                let expr_children = expr.children.as_ref().expect("NaryOps have children");
                 let mut children_blocks = Vec::new();
                 for (i, child) in expr_children.iter().enumerate() {
                     let child_addr = addr.append(i);
-                    let child_block = Block::from_expression(child.clone(), child_addr);
+                    let child_block = Block::from_expression(child, child_addr);
                     children_blocks.push(child_block);
                     if i < expr_children.len() - 1 {
                         children_blocks.push(block_builder::comma());
@@ -62,14 +69,14 @@ impl Block {
             },
             ExpressionType::AssocTrain => {
                 let mut children_blocks = Vec::new();
-                let expr_children = expr.children.expect("AssocTrain has children");
+                let expr_children = expr.children.as_ref().expect("AssocTrain has children");
                 let expr_children_count = expr_children.len();
                 for (i, child) in expr_children.iter().enumerate() {
                     let child_addr = addr.append(i);
-                    let child_block = Block::from_expression(child.clone(), child_addr);
+                    let child_block = Block::from_expression(child, child_addr);
                     children_blocks.push(child_block);
                     if i < expr_children_count - 1 {
-                        let operator_block = block_builder::symbol(expr.symbol.clone(), addr.sub(i));
+                        let operator_block = block_builder::symbol(symbol.clone(), addr.sub(i));
                         children_blocks.push(operator_block);
                     }
                 }

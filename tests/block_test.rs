@@ -20,7 +20,7 @@ mod simple_block {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("-(a)", &ctx).unwrap();
-        let block = Block::from_expression(expr, address![]);
+        let block = Block::from(expr);
         let expected_block = bb::horizontal_container(vec![
             bb::symbol("-".to_string(), address![]),
             bb::symbol("a".to_string(), address![0]),
@@ -38,7 +38,7 @@ mod simple_block {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("+(a,b)", &ctx).unwrap();
-        let block = Block::from_expression(expr, address![]);
+        let block = Block::from(expr);
         let expected_block = bb::horizontal_container(vec![
             bb::symbol("a".to_string(), address![0]),
             bb::symbol("+".to_string(), address![]),
@@ -58,7 +58,7 @@ mod simple_block {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("+(a,b,c,d,e)", &ctx).unwrap();
-        let block = Block::from_expression(expr, address![]);
+        let block = Block::from(expr);
         let expected_block = bb::horizontal_container(vec![
             bb::symbol("a".to_string(), address![0]),
             bb::symbol("+".to_string(), address![].sub(0)),
@@ -83,7 +83,7 @@ mod simple_block {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("*(*(a,b),c)", &ctx).unwrap();
-        let block = Block::from_expression(expr, address![]);
+        let block = Block::from(expr);
         let expected_block = bb::horizontal_container(vec![
             bb::horizontal_container(vec![
                 bb::symbol("a".to_string(), address![0,0]),
@@ -106,7 +106,7 @@ mod simple_block {
             handle_numerics: false,
         };
         let expr = parser_prefix::to_expression("*(*(a,b),+(c,*(e,f),d))", &ctx).unwrap();
-        let block = Block::from_expression(expr, address![]);
+        let block = Block::from(expr);
         let expected_block = bb::horizontal_container(vec![
             bb::horizontal_container(vec![
                 bb::symbol("a".to_string(), address![0,0]),
