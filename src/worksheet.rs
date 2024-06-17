@@ -25,6 +25,7 @@ pub struct ExpressionSequence {
     context: Rc<RefCell<WorksheetContext>>,
 }
 
+#[derive(Default)]
 pub struct Worksheet {
     expression_sequences: Vec<ExpressionSequence>,
     context: Rc<RefCell<WorksheetContext>>,
