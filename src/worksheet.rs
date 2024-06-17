@@ -20,6 +20,7 @@ pub struct WorksheetContext {
     get_possible_actions_function: Option<GetPossibleActionsFunction>,
 }
 
+#[derive(Default)]
 pub struct ExpressionSequence {
     pub history: Vec<(Action, Expression)>,
     context: Rc<RefCell<WorksheetContext>>,
