@@ -1,4 +1,4 @@
-use std::{collections::HashMap, cmp::Ordering};
+use std::{cmp::Ordering, collections::{HashMap, HashSet}};
 use super::utils;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,7 +65,9 @@ pub struct Context {
     pub assoc_ops: Vec<String>,
     // the rest of the symbols will be considered as n-ary operators (functions)
     pub handle_numerics: bool,
+    pub flags: HashSet<String>
 }
+
 
 impl Context {
     pub fn add_param(&mut self, param: String) -> Context {
@@ -83,6 +85,23 @@ impl Context {
     pub fn remove_params(&mut self, params: &Vec<String>) -> Context {
         for p in params { self.remove_param(p); }
         return self.clone();
+    }
+    
+    pub fn add_flag(&mut self, flag: impl ToString) -> Context {
+        self.flags.insert(flag.to_string());
+        return self.clone();
+    }
+    pub fn add_flags(&mut self, flags: Vec<impl ToString>) -> Context {
+        for f in flags { self.add_flag(f.to_string()); }
+        return self.clone();
+    }
+    
+    pub fn contains_flag(&self, flag: impl ToString) -> bool {
+        return self.flags.contains(&flag.to_string());
+    }
+    pub fn contains_all_flags(&self, flags: &Vec<impl ToString>) -> bool {
+        for f in flags { if !self.flags.contains(&f.to_string()) { return false; } }
+        return true;
     }
 }
 
@@ -174,6 +193,13 @@ impl PartialOrd for Address {
 macro_rules! address {
     ($($elem:expr),*) => {
         Address::new(vec![$($elem),*], None)
+    };
+}
+
+#[macro_export]
+macro_rules! ctxflag {
+    ($($elem:expr),*) => {
+        HashSet::from(vec![$($elem.to_string()),*], None)
     };
 }
 
@@ -605,18 +631,18 @@ impl Expression {
         return self.apply_equation_ltr_this_node(equation);
     }
     pub fn apply_equation_rtl_this_node(&self, equation: &Expression) -> Result<Expression, ExpressionError> {
-        return self.apply_equation_ltr_this_node(&equation.clone().flip_equation());
+        return self.apply_equation_ltr_this_node(&equation.flip_equation());
     }
     pub fn apply_equation_ltr_this_node(&self, equation: &Expression) -> Result<Expression, ExpressionError> {
         if !equation.is_equation() { return Err(ExpressionError::NotAnEquation); }
         
         let eq_children = equation.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
-        let lhs = eq_children[0].clone();
+        let lhs = &eq_children[0];
         
         if !equation.is_contain_variable() {
             // if the equation contains no variables (all of the values are parameters)
             // then the equation must match the current node
-            if !(&lhs == self) {
+            if !(lhs == self) {
                 return Err(ExpressionError::EquationLHSMismatch(lhs.to_string(true), self.to_string(true))); 
             }
             let rhs = eq_children[1].clone();
@@ -624,7 +650,7 @@ impl Expression {
         } else {
             // if the equation contains variables (not all of the value is parameters)
             // try to pattern match and transform the equation first
-            let match_map = self.pattern_match_this_node(&lhs)
+            let match_map = self.pattern_match_this_node(lhs)
                 .ok_or(ExpressionError::PatternDoesNotMatch)?;
             let equation = equation.apply_match_map(&match_map);
             // if theres still a variable in the equation, then the equation is invalid
@@ -649,6 +675,15 @@ impl Expression {
             let new_expr = subexpr.apply_equation_this_node(equation)?;
             return self.replace_expression_at(new_expr, addr);
         }
+    }
+    
+    pub fn get_possible_equation_application_address(&self, equation: &Expression) -> Vec<Address> {
+        if !equation.is_equation() { return vec![]; }
+        let eq_children = equation.children.as_ref();
+        if eq_children.is_none() { return vec![]; }
+        let lhs = &eq_children.unwrap()[0];
+        let pattern_matches = self.get_pattern_matches(lhs);
+        return pattern_matches.iter().map(|(addr,_)| addr.clone()).collect()
     }
     
     pub fn apply_implication(&self, implication: &Expression) -> Result<Expression, ExpressionError>{

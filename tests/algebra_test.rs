@@ -24,6 +24,8 @@ mod rule {
 
 #[cfg(test)]
 mod normalization {
+    use algebra::AlgebraCtxFlags;
+
     use super::*;
     
     #[test]
@@ -32,6 +34,28 @@ mod normalization {
         let expr = parser_prefix::to_expression("+(-(x,1),2)", &ctx).unwrap();
         let normalized_expr = expr.normalize_algebra(&ctx);
         let target_expr = parser_prefix::to_expression("+(x,-(1),2)", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn simplification_one_and_zero() {
+        let ctx = arithmetic::get_arithmetic_ctx()
+            .add_params(vec_strings!["x"])
+            .add_flag(AlgebraCtxFlags::SimplifyOneAndZero);
+        let expr = parser_prefix::to_expression("*(-(x,0),1)", &ctx).unwrap();
+        let normalized_expr = expr.normalize_simplify_one_and_zero(&ctx);
+        let target_expr = parser_prefix::to_expression("x", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+        
+        let expr = parser_prefix::to_expression("-(-(x,0),0)", &ctx).unwrap();
+        let normalized_expr = expr.normalize_simplify_one_and_zero(&ctx);
+        let target_expr = parser_prefix::to_expression("x", &ctx).unwrap();
+        assert_eq!(normalized_expr, target_expr);
+        
+        // (1/1 + 0)*(x - 0)
+        let expr = parser_prefix::to_expression("*(+(/(1,1),0),-(x,0))", &ctx).unwrap();
+        let normalized_expr = expr.normalize_simplify_one_and_zero(&ctx);
+        let target_expr = parser_prefix::to_expression("x", &ctx).unwrap();
         assert_eq!(normalized_expr, target_expr);
     }
     

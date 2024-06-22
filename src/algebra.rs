@@ -40,6 +40,17 @@ impl From<ArithmeticError> for AlgebraError {
     }
 }
 
+pub enum AlgebraCtxFlags {
+    SimplifyOneAndZero,
+}
+impl ToString for AlgebraCtxFlags {
+    fn to_string(&self) -> String {
+        return match self {
+            AlgebraCtxFlags::SimplifyOneAndZero => "algebra:simplify_one_and_zero".to_string(),
+        };
+    }
+}
+
 impl Expression {
     pub fn is_function(&self) -> bool {
         // _(x) = ...
@@ -55,6 +66,7 @@ impl Expression {
             .normalize_two_children_assoc_train_to_binary_op(&ctx.binary_ops)
             .normalize_add_negative_to_sub()
             .normalize_single_children_assoc_train()
+            .normalize_simplify_one_and_zero(&ctx)
     }
     
     /// turn the numerator and denominator into an AssocTrain of Mul
@@ -70,6 +82,51 @@ impl Expression {
             symbol: ArithmeticOperator::Div.to_string(),
             children: Some(vec![numerator, denominator]),
         }
+    }
+    
+    pub fn normalize_simplify_one_and_zero(&self, ctx: &Context) -> Expression {
+        if !ctx.contains_flag(AlgebraCtxFlags::SimplifyOneAndZero) { return self.clone(); }
+        let add_zero = eb::equation(
+            eb::binary("+", eb::variable("X"), eb::constant("0")),
+            eb::variable("X"));
+        let zero_add = eb::equation(
+            eb::binary("+", eb::constant("0"), eb::variable("X")),
+            eb::variable("X"));
+        let mul_one = eb::equation(
+            eb::binary("*", eb::variable("X"), eb::constant("1")),
+            eb::variable("X"));
+        let one_mul = eb::equation(
+            eb::binary("*", eb::constant("1"), eb::variable("X")),
+            eb::variable("X"));
+        let mul_zero = eb::equation(
+            eb::binary("*", eb::variable("X"), eb::constant("0")),
+            eb::constant("0"));
+        let zero_mul = eb::equation(
+            eb::binary("*", eb::constant("0"), eb::variable("X")),
+            eb::constant("0"));
+        let sub_zero = eb::equation(
+            eb::binary("-", eb::variable("X"), eb::constant("0")),
+            eb::variable("X"));
+        let div_one = eb::equation(
+            eb::binary("/", eb::variable("X"), eb::constant("1")),
+            eb::variable("X"));
+        let rule_exprs = vec![add_zero, zero_add, mul_one, one_mul, mul_zero, zero_mul, div_one, sub_zero];
+        
+        let mut prev_expr = Expression::default();
+        let mut expr = self.clone();
+        while &expr != &prev_expr {
+            prev_expr = expr.clone();
+            for e in &rule_exprs {
+                let possible_eq_addr = expr.get_possible_equation_application_address(e);
+                if possible_eq_addr.len() < 1 { continue; }
+                let addr = possible_eq_addr.get(0)
+                    .expect("Expression::get_possible_equation_application_address is valid");
+                if let Ok(new_expr) = expr.apply_equation_at(e, addr) {
+                    expr = new_expr;
+                }
+            }
+        }
+        return expr;
     }
     
     pub fn apply_function_to_both_side(&self, fn_expr: Expression) -> Result<Expression, AlgebraError> {
@@ -179,13 +236,14 @@ impl Worksheet {
     }
 }
 
-pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 14] = [
+pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 15] = [
     ("add_zero", "=(+(X,0),X)", "Add by Zero"),
     ("zero_add", "=(+(0,X),X)", "Add by Zero", ),
     ("mul_one", "=(*(X,1),X)", "Multiply by One"),
     ("one_mul", "=(*(1,X),X)", "Multiply by One"),
     ("mul_zero", "=(*(X,0),0)", "Multiply by Zero"),
     ("zero_mul", "=(*(0,X),0)", "Multiply by Zero"),
+    ("sub_zero", "=(-(X,0),X)", "Subtract by Zero"),
     ("div_one", "=(/(X,1),X)", "Divide by One"),
     ("add_self", "=(+(X,X),*(2,X))", "Self Addition"),
     ("sub_self", "=(-(X,X),0)", "Self Subtraction"),
