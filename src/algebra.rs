@@ -179,7 +179,7 @@ impl Worksheet {
     }
 }
 
-pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 7] = [
+pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 14] = [
     ("add_zero", "=(+(X,0),X)", "Add by Zero"),
     ("zero_add", "=(+(0,X),X)", "Add by Zero", ),
     ("mul_one", "=(*(X,1),X)", "Multiply by One"),
@@ -187,6 +187,13 @@ pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 7] = [
     ("mul_zero", "=(*(X,0),0)", "Multiply by Zero"),
     ("zero_mul", "=(*(0,X),0)", "Multiply by Zero"),
     ("div_one", "=(/(X,1),X)", "Divide by One"),
+    ("add_self", "=(+(X,X),*(2,X))", "Self Addition"),
+    ("sub_self", "=(-(X,X),0)", "Self Subtraction"),
+    ("sub_self2", "=(+(X,-(X)),0)", "Self Subtraction"),
+    ("sub_self3", "=(+(-(X),X),0)", "Self Subtraction"),
+    ("div_self", "=(/(X,X),1)", "Self Division"),
+    ("distribute_property", "=(*(X,+(Y,Z)),+(*(X,Y),*(X,Z)))", "Distributive Property"), // X*(Y+Z) = X*Y + X*Z
+    ("distribute_property2", "=(*(+(Y,Z),X),+(*(Y,X),*(Z,X)))", "Distributive Property"), // (Y+Z)*X = Y*X + Z*X
 ];
 pub fn get_algebra_rules(ctx: &Context) -> HashMap<String, Rule> {
     let mut rules = HashMap::new();
