@@ -10,6 +10,7 @@ fn main() {
         binary_ops: vec_strings!["+", "-", "*", "/"],
         assoc_ops: vec_strings!["+", "*"],
         handle_numerics: true,
+        ..Default::default()
     };
     let expr = parser_prefix::to_expression(str, &ctx).unwrap();
     println!("{}", expr.to_string(true));

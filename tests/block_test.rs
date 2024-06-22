@@ -17,9 +17,7 @@ mod simple_block {
         let ctx = exp::Context {
             parameters: vec_strings!["a"],
             unary_ops: vec_strings!["-"],
-            binary_ops: vec_strings![],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("-(a)", &ctx).unwrap();
         let block = Block::from(expr);
@@ -34,10 +32,8 @@ mod simple_block {
     fn binary() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,b)", &ctx).unwrap();
         let block = Block::from(expr);
@@ -54,10 +50,9 @@ mod simple_block {
     fn assoc_train() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c", "d", "e"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
             assoc_ops: vec_strings!["+"],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,b,c,d,e)", &ctx).unwrap();
         let block = Block::from(expr);
@@ -79,10 +74,8 @@ mod simple_block {
     fn nested_binary(){
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["*"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("*(*(a,b),c)", &ctx).unwrap();
         let block = Block::from(expr);
@@ -102,10 +95,9 @@ mod simple_block {
     fn nested_binary_assoc(){
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
             assoc_ops: vec_strings!["+"],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("*(*(a,b),+(c,*(e,f),d))", &ctx).unwrap();
         let block = Block::from(expr);

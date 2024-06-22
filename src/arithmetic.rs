@@ -55,12 +55,12 @@ impl From<ExpressionError> for ArithmeticError {
 pub fn get_arithmetic_ctx() -> exp::Context {
     use ArithmeticOperator::*;
     exp::Context {
-        parameters: vec![],
         // unary_ops:  vec![Negative.to_string(), Reciprocal.to_string()],
         unary_ops:  vec![Negative.to_string()],
         binary_ops: vec![Add.to_string(), Sub.to_string(), Mul.to_string(), Div.to_string()],
         assoc_ops: vec![Add.to_string(), Mul.to_string()],
         handle_numerics: true,
+        ..Default::default()
     }
 }
 

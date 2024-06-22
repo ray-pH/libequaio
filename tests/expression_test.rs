@@ -21,10 +21,8 @@ mod basic {
     fn is_statement() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("=(a,+(b,c))", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "(a = (b + c))");
@@ -35,10 +33,9 @@ mod basic {
     fn generate_subexpr_from_train() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
             assoc_ops: vec_strings!["+"],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "(a + b + c)");
@@ -54,10 +51,8 @@ mod basic {
     fn substitute_symbol() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c", "x"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,+(b,c))", &ctx).unwrap();
         assert_eq!(expr.to_string(true), "(a + (b + c))");
@@ -73,10 +68,9 @@ mod assoc_train_normalization {
     fn get_ctx() -> exp::Context {
         return exp::Context {
             parameters: vec_strings!["a", "b", "c", "d", "e", "f", "g", "h"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+","*","@"],
             assoc_ops: vec_strings!["+","@"],
-            handle_numerics: false,
+            ..Default::default()
         };
     }
     
@@ -176,10 +170,8 @@ mod pattern_matching {
     fn pattern_match_at_node() {
         let ctx = exp::Context {
             parameters: vec_strings!["x", "y"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: true,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(x,y)", &ctx).unwrap();
         let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
@@ -192,10 +184,8 @@ mod pattern_matching {
     fn pattern_match_at_address() {
         let ctx = exp::Context {
             parameters: vec_strings!["x", "y", "z"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: true,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(x,+(y,z))", &ctx).unwrap();
         let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
@@ -218,6 +208,7 @@ mod pattern_matching {
             binary_ops: vec_strings!["+", "-", "*", "/"],
             assoc_ops: vec_strings!["+", "*"],
             handle_numerics: true,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression(expr, &ctx).unwrap();
         let pattern = parser_prefix::to_expression(pattern, &ctx).unwrap();
@@ -325,10 +316,8 @@ mod expression_replacement {
     fn replace_expression() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,+(b,c))", &ctx).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(b,c)", &ctx).unwrap();
@@ -343,10 +332,9 @@ mod expression_replacement {
     fn replace_expression_on_train() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c", "d", "e"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+", "*"],
             assoc_ops: vec_strings!["+"],
-            handle_numerics: false,
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,b,c)", &ctx).unwrap();
         let expr_as_replacement = parser_prefix::to_expression("*(d,e)", &ctx).unwrap();
@@ -369,10 +357,8 @@ mod apply_equation {
     fn generate_eq_from_match_map() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
@@ -390,10 +376,8 @@ mod apply_equation {
     fn generate_eq_from_match_map_deep() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("+(+(a,0),b)", &ctx).unwrap();
@@ -411,10 +395,8 @@ mod apply_equation {
     fn simple_equation() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
@@ -427,10 +409,8 @@ mod apply_equation {
     fn simple_equation_rtl() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("+(a,0)", &ctx).unwrap();
@@ -443,10 +423,9 @@ mod apply_equation {
     fn on_train() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
             assoc_ops: vec_strings!["+"],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("+(a,b,0)", &ctx).unwrap();
@@ -464,10 +443,8 @@ mod apply_implication {
     fn simple_implication() {
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "0"],
-            unary_ops: vec_strings![],
             binary_ops: vec_strings!["+"],
-            assoc_ops: vec_strings![],
-            handle_numerics: false,
+            ..Default::default()
         };
         
         let expr = parser_prefix::to_expression("=(+(a,b),a)", &ctx).unwrap();
