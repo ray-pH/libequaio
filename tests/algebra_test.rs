@@ -120,7 +120,7 @@ mod fraction {
 
 #[cfg(test)]
 mod simple_algebra {
-    use algebra::get_algebra_rules;
+    use algebra::{get_algebra_rules, AlgebraCtxFlags};
     use super::*;
     
     #[test]
@@ -172,7 +172,9 @@ mod simple_algebra {
     
     #[test]
     fn question2() {
-        let ctx = arithmetic::get_arithmetic_ctx().add_params(vec_strings!["x"]);
+        let ctx = arithmetic::get_arithmetic_ctx()
+            .add_params(vec_strings!["x"])
+            .add_flag(AlgebraCtxFlags::SimplifyOneAndZero);
         let algebra_rules = get_algebra_rules(&ctx);
         
         // x = 4 - x
@@ -184,9 +186,6 @@ mod simple_algebra {
         assert_eq!(expr.to_string(true), "((x + x) = (4 + (-x) + x))");
         let rule_eq = &algebra_rules.get("sub_self3").unwrap().expression;
         let expr = expr.apply_equation_at(rule_eq, &address![1].sub(1))
-            .unwrap().normalize_algebra(&ctx);
-        assert_eq!(expr.to_string(true), "((x + x) = (4 + 0))");
-        let expr = expr.apply_simple_arithmetic_equation_at(&address![1])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((x + x) = 4)");
         let rule_eq = &algebra_rules.get("add_self").unwrap().expression;
@@ -201,14 +200,6 @@ mod simple_algebra {
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((2 * x) / 2) = 2)");
         let expr = expr.apply_fraction_arithmetic_at(0, 0, &address![0])
-            .unwrap().normalize_algebra(&ctx);
-        assert_eq!(expr.to_string(true), "(((1 * x) / 1) = 2)");
-        let rule_eq = &algebra_rules.get("div_one").unwrap().expression;
-        let expr = expr.apply_equation_at(rule_eq, &address![0])
-            .unwrap().normalize_algebra(&ctx);
-        assert_eq!(expr.to_string(true), "((1 * x) = 2)");
-        let rule_eq = &algebra_rules.get("one_mul").unwrap().expression;
-        let expr = expr.apply_equation_at(rule_eq, &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(x = 2)");
     }
