@@ -714,26 +714,26 @@ pub mod expression_builder {
         };
     }
     
-    pub fn unary(symbol: String, child: Expression) -> Expression {
+    pub fn unary(symbol: &str, child: Expression) -> Expression {
         return Expression {
             exp_type : ExpressionType::OperatorUnary,
-            symbol,
+            symbol   : symbol.to_string(),
             children : Some(vec![child]),
         };
     }
     
-    pub fn binary(symbol: String, left: Expression, right: Expression) -> Expression {
+    pub fn binary(symbol: &str, left: Expression, right: Expression) -> Expression {
         return Expression {
             exp_type : ExpressionType::OperatorBinary,
-            symbol,
+            symbol   : symbol.to_string(),
             children : Some(vec![left, right]),
         };
     }
     
-    pub fn nary(symbol: String, children: Vec<Expression>) -> Expression {
+    pub fn nary(symbol: &str, children: Vec<Expression>) -> Expression {
         return Expression {
             exp_type : ExpressionType::OperatorNary,
-            symbol,
+            symbol   : symbol.to_string(),
             children : Some(children),
         };
     }

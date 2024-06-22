@@ -212,8 +212,8 @@ pub fn get_algebra_rules(ctx: &Context) -> HashMap<String, Rule> {
 fn generate_simple_apply_arithmetic_to_both_side_expr(op: &ArithmeticOperator, expr: &Expression) -> Expression {
     // =(_(X),{op}(X,{expr}))
     return eb::equation(
-        eb::nary("_".to_string(), vec![eb::variable("X")]),
-        eb::binary(op.to_string(), eb::variable("X"), expr.clone())
+        eb::nary("_", vec![eb::variable("X")]),
+        eb::binary(op.as_str(), eb::variable("X"), expr.clone())
     );
 }
 fn generate_simple_apply_arithmetic_to_both_side_name(op: &ArithmeticOperator, expr: &Expression) -> String {
