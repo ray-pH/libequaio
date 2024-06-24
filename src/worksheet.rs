@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
-use crate::expression::{Address, Rule};
+use crate::expression::Address;
+use crate::rule::Rule;
 use super::expression::{Context, Expression};
 
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;

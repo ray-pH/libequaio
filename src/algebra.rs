@@ -1,6 +1,7 @@
-use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, Rule, expression_builder as eb};
+use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, expression_builder as eb};
 use crate::worksheet::{Action, ExpressionSequence, Worksheet, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError, get_arithmetic_ctx};
+use crate::rule::Rule;
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
 use std::collections::HashMap;
@@ -117,7 +118,7 @@ impl Expression {
         while &expr != &prev_expr {
             prev_expr = expr.clone();
             for e in &rule_exprs {
-                let possible_eq_addr = expr.get_possible_equation_application_address(e);
+                let possible_eq_addr = expr.get_possible_equation_application_addresses(e);
                 if possible_eq_addr.len() < 1 { continue; }
                 let addr = possible_eq_addr.get(0)
                     .expect("Expression::get_possible_equation_application_address is valid");

@@ -43,13 +43,6 @@ impl StatementSymbols {
     }
 }
 
-#[derive(Clone, Default)]
-pub struct Rule {
-    pub id: String,
-    pub expression: Expression,
-    pub label: String,
-}
-
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Expression {
     pub exp_type: ExpressionType,
@@ -677,7 +670,7 @@ impl Expression {
         }
     }
     
-    pub fn get_possible_equation_application_address(&self, equation: &Expression) -> Vec<Address> {
+    pub fn get_possible_equation_application_addresses(&self, equation: &Expression) -> Vec<Address> {
         if !equation.is_equation() { return vec![]; }
         let eq_children = equation.children.as_ref();
         if eq_children.is_none() { return vec![]; }
@@ -712,15 +705,6 @@ impl Expression {
         }
     }
     
-    pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
-        let rule_expr = &rule.expression;
-        if rule_expr.is_equation() {
-            return self.apply_equation_at(rule_expr, addr);
-        } else if rule_expr.is_implication() {
-            return self.apply_implication(rule_expr);
-        }
-        return Err(ExpressionError::InvalidRule);
-    }
 }
 
 pub mod expression_builder {
