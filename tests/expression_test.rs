@@ -455,3 +455,36 @@ mod apply_implication {
         assert_eq!(new_expr.to_string(true), "(b = 0)");
     }
 }
+
+#[cfg(test)]
+mod equivalence {
+    use super::*;
+    
+    #[test]
+    fn simple() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y"],
+            binary_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        let expr1 = parser_prefix::to_expression("+(x,y)", &ctx).unwrap();
+        let expr2 = parser_prefix::to_expression("+(y,x)", &ctx).unwrap();
+        assert!(!expr1.is_equivalent_to(&expr2));
+        
+        let expr1 = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
+        let expr2 = parser_prefix::to_expression("+(B,C)", &ctx).unwrap();
+        assert!(expr1.is_equivalent_to(&expr2));
+        
+        let expr1 = parser_prefix::to_expression("*(+(A,B),x)", &ctx).unwrap();
+        let expr2 = parser_prefix::to_expression("*(+(B,C),x)", &ctx).unwrap();
+        assert!(expr1.is_equivalent_to(&expr2));
+        
+        let expr1 = parser_prefix::to_expression("*(+(A,x),B)", &ctx).unwrap();
+        let expr2 = parser_prefix::to_expression("*(+(B,x),C)", &ctx).unwrap();
+        assert!(expr1.is_equivalent_to(&expr2));
+        
+        let expr1 = parser_prefix::to_expression("*(+(x,A),B)", &ctx).unwrap();
+        let expr2 = parser_prefix::to_expression("*(+(B,x),C)", &ctx).unwrap();
+        assert!(!expr1.is_equivalent_to(&expr2));
+    }
+}

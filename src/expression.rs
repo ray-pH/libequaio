@@ -271,6 +271,13 @@ impl Expression {
         // return true if any of the children is a variable
         return children.iter().any(|c| c.is_contain_variable());
     }
+    
+    pub fn is_equivalent_to(&self, other: &Self) -> bool {
+        let match_map = self.pattern_match_this_node(other);
+        if match_map.is_none() { return false; }
+        let new_other = other.apply_match_map(&match_map.unwrap());
+        return *self == new_other;
+    }
 
     pub fn to_string(&self, parentheses: bool) -> String {
         match &self.exp_type {
