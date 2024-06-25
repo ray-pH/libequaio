@@ -433,6 +433,22 @@ mod apply_equation {
         let new_expr = expr.apply_equation_at(&rule_eq, &address![].sub(1)).unwrap();
         assert_eq!(new_expr.to_string(true), "(a + b)");
     }
+    
+    #[test]
+    fn other() {
+        let ctx = exp::Context {
+            parameters: vec_strings![""],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings!["+"],
+            handle_numerics: true,
+            ..Default::default()
+        };
+        
+        let expr = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(+(A,B),+(B,A))", &ctx).unwrap();
+        let new_expr = expr.apply_equation_at(&rule_eq, &address![0]).unwrap();
+        assert_eq!(new_expr.to_string(true), "((0 + X) = X)");
+    }
 }
 
 #[cfg(test)]

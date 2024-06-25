@@ -342,6 +342,15 @@ impl Expression {
         }
         return new_exp;
     }
+    
+    pub fn lhs(&self) -> Option<&Expression> {
+        if !self.is_equation() { return None; }
+        return self.at(&address![0]).ok();
+    }
+    pub fn rhs(&self) -> Option<&Expression> {
+        if !self.is_equation() { return None; }
+        return self.at(&address![1]).ok();
+    }
 
     /// Get the expression from the address
     pub fn at(&self, address: &Address) -> Result<&Expression, ExpressionError> {
@@ -639,22 +648,13 @@ impl Expression {
         let eq_children = equation.children.as_ref().ok_or(ExpressionError::InvalidAddress)?;
         let lhs = &eq_children[0];
         
-        if !equation.is_contain_variable() {
-            // if the equation contains no variables (all of the values are parameters)
-            // then the equation must match the current node
-            if !(lhs == self) {
-                return Err(ExpressionError::EquationLHSMismatch(lhs.to_string(true), self.to_string(true))); 
-            }
+        if lhs == self {
             let rhs = eq_children[1].clone();
             return Ok(rhs);
         } else {
-            // if the equation contains variables (not all of the value is parameters)
-            // try to pattern match and transform the equation first
             let match_map = self.pattern_match_this_node(lhs)
                 .ok_or(ExpressionError::PatternDoesNotMatch)?;
             let equation = equation.apply_match_map(&match_map);
-            // if theres still a variable in the equation, then the equation is invalid
-            if equation.is_contain_variable() { return Err(ExpressionError::ExpressionContainsVariable); }
             return self.apply_equation_ltr_this_node(&equation);
         }
     }
