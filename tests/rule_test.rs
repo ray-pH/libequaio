@@ -95,15 +95,18 @@ mod from_file {
         let filepath = "rules/algebra.json";
         let rulestr = std::fs::read_to_string(filepath).unwrap();
         let rules = rule::parse_ruleset_from_json(&rulestr).unwrap();
-        assert_eq!(rules.len(), 9);
+        assert_eq!(rules.len(), 12);
         assert_rule_eq(&rules[0], "algebra/add_zero/0", "Addition with 0", "((X + 0) = X)");
         assert_rule_eq(&rules[1], "algebra/add_zero/1", "Addition with 0", "((0 + X) = X)");
         assert_rule_eq(&rules[2], "algebra/mul_one/0", "Multiplication with 1", "((X * 1) = X)");
         assert_rule_eq(&rules[3], "algebra/mul_one/1", "Multiplication with 1", "((1 * X) = X)");
         assert_rule_eq(&rules[4], "algebra/mul_zero/0", "Multiplication with 0", "((X * 0) = 0)");
         assert_rule_eq(&rules[5], "algebra/mul_zero/1", "Multiplication with 0", "((0 * X) = 0)");
-        assert_rule_eq(&rules[6], "algebra/sub_zero", "Subtraction by Zero", "((X - 0) = X)");
-        assert_rule_eq(&rules[7], "algebra/div_one", "Division by One", "((X / 1) = X)");
+        assert_rule_eq(&rules[6], "algebra/sub_zero", "Subtraction by 0", "((X - 0) = X)");
+        assert_rule_eq(&rules[7], "algebra/div_one", "Division by 1", "((X / 1) = X)");
         assert_rule_eq(&rules[8], "algebra/sub_self", "Self subtraction", "((X - X) = 0)");
+        assert_rule_eq(&rules[9], "algebra/add_negative_self/0", "Self subtraction", "((X + (-X)) = 0)");
+        assert_rule_eq(&rules[10], "algebra/add_negative_self/1", "Self subtraction", "(((-X) + X) = 0)");
+        assert_rule_eq(&rules[11], "algebra/add_self", "Self addition", "((X + X) = (2 * X))");
     }
 }

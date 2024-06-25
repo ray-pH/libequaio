@@ -1,25 +1,15 @@
-use equaio::address;
+use equaio::{address, rule};
 use equaio::expression::{Address, expression_builder as eb};
 use equaio::arithmetic;
 use equaio::parser_prefix;
+use equaio::rule::RuleMap;
 use equaio::vec_strings;
 use equaio::algebra;
 
-
-#[cfg(test)]
-mod rule {
-    use super::*;
-    
-    #[test]
-    fn rule() {
-        let ctx = arithmetic::get_arithmetic_ctx();
-        for (name, rule_str, _) in algebra::ALGEBRA_RULE_STRING_TUPLE.iter() {
-            let rule_expr = parser_prefix::to_expression(rule_str, &ctx);
-            println!("{}", name);
-            assert!(rule_expr.is_some());
-        }
-    }
-    
+fn get_algebra_rules() -> RuleMap {
+    let filepath = "rules/algebra.json";
+    let rulestr = std::fs::read_to_string(filepath).unwrap();
+    return rule::parse_rulemap_from_json(&rulestr).unwrap();
 }
 
 #[cfg(test)]
@@ -120,7 +110,7 @@ mod fraction {
 
 #[cfg(test)]
 mod simple_algebra {
-    use algebra::{get_algebra_rules, AlgebraCtxFlags};
+    use algebra::AlgebraCtxFlags;
     use super::*;
     
     #[test]
@@ -130,10 +120,10 @@ mod simple_algebra {
         let x_plus_zero = parser_prefix::to_expression("=(+(X,0),X)", &ctx).unwrap();
         let x_div_one   = parser_prefix::to_expression("=(/(X,1),X)", &ctx).unwrap();
         let one_times_x = parser_prefix::to_expression("=(*(1,X),X)", &ctx).unwrap();
-        let algebra_rules = get_algebra_rules(&ctx);
-        assert_eq!(algebra_rules.get("add_zero").unwrap().expression, x_plus_zero);
-        assert_eq!(algebra_rules.get("div_one").unwrap().expression, x_div_one);
-        assert_eq!(algebra_rules.get("one_mul").unwrap().expression, one_times_x);
+        let algebra_rules = get_algebra_rules();
+        assert_eq!(algebra_rules.get("algebra/add_zero/0").unwrap().expression, x_plus_zero);
+        assert_eq!(algebra_rules.get("algebra/div_one").unwrap().expression, x_div_one);
+        assert_eq!(algebra_rules.get("algebra/mul_one/1").unwrap().expression, one_times_x);
         
         // 2*x - 1 = 3
         let expr = parser_prefix::to_expression("=(-(*(2,x),1),3)", &ctx).unwrap();
@@ -175,7 +165,7 @@ mod simple_algebra {
         let ctx = arithmetic::get_arithmetic_ctx()
             .add_params(vec_strings!["x"])
             .add_flag(AlgebraCtxFlags::SimplifyOneAndZero);
-        let algebra_rules = get_algebra_rules(&ctx);
+        let algebra_rules = get_algebra_rules();
         
         // x = 4 - x
         let expr = parser_prefix::to_expression("=(x,-(4,x))", &ctx).unwrap();
@@ -184,11 +174,11 @@ mod simple_algebra {
         let expr = expr.apply_function_to_both_side(func)
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((x + x) = (4 + (-x) + x))");
-        let rule_eq = &algebra_rules.get("sub_self3").unwrap().expression;
+        let rule_eq = &algebra_rules.get("algebra/add_negative_self/1").unwrap().expression;
         let expr = expr.apply_equation_at(rule_eq, &address![1].sub(1))
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((x + x) = 4)");
-        let rule_eq = &algebra_rules.get("add_self").unwrap().expression;
+        let rule_eq = &algebra_rules.get("algebra/add_self").unwrap().expression;
         let expr = expr.apply_equation_at(rule_eq, &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "((2 * x) = 4)");

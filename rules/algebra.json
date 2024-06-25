@@ -29,17 +29,27 @@
         {
             "id": "sub_zero",
             "expr_prefix": "=(-(X,0),X)",
-            "label": "Subtraction by Zero"
+            "label": "Subtraction by 0"
         },
         {
             "id": "div_one",
             "expr_prefix": "=(/(X,1),X)",
-            "label": "Division by One"
+            "label": "Division by 1"
         },
         {
             "id": "sub_self",
             "expr_prefix": "=(-(X,X),0)",
             "label": "Self subtraction"
+        },
+        {
+            "id": "add_negative_self",
+            "expr_prefix": "=(+(X,-(X)),0)",
+            "label": "Self subtraction"
+        },
+        {
+            "id": "add_self",
+            "expr_prefix": "=(+(X,X),*(2,X))",
+            "label": "Self addition"
         }
     ]
 }

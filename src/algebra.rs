@@ -1,10 +1,8 @@
 use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, expression_builder as eb};
-use crate::worksheet::{Action, ExpressionSequence, Worksheet, WorksheetContext};
-use crate::arithmetic::{ArithmeticOperator, ArithmeticError, get_arithmetic_ctx};
-use crate::rule::{Rule, RuleMap};
+use crate::worksheet::{Action, ExpressionSequence, WorksheetContext};
+use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
-use std::collections::HashMap;
 use lazy_static::lazy_static;
 
 // this is a module for algebra (with arithmetic)
@@ -223,50 +221,6 @@ impl ExpressionSequence {
         return self.try_push(Action::ApplyAction("Simplify fraction".to_string()), expr);
     }
 }
-
-impl Worksheet {
-    pub fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
-        let mut ws = Worksheet::new();
-        let ctx = get_arithmetic_ctx().add_params(variables);
-        ws.set_expression_context(ctx);
-        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-        ws.set_rule_map(get_algebra_rules(&ws.get_expression_context()));
-        ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
-            get_possible_actions::algebra(expr,ctx,addr_vec));
-        return ws;
-    }
-}
-
-pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 15] = [
-    ("add_zero", "=(+(X,0),X)", "Add by Zero"),
-    ("zero_add", "=(+(0,X),X)", "Add by Zero", ),
-    ("mul_one", "=(*(X,1),X)", "Multiply by One"),
-    ("one_mul", "=(*(1,X),X)", "Multiply by One"),
-    ("mul_zero", "=(*(X,0),0)", "Multiply by Zero"),
-    ("zero_mul", "=(*(0,X),0)", "Multiply by Zero"),
-    ("sub_zero", "=(-(X,0),X)", "Subtract by Zero"),
-    ("div_one", "=(/(X,1),X)", "Divide by One"),
-    ("add_self", "=(+(X,X),*(2,X))", "Self Addition"),
-    ("sub_self", "=(-(X,X),0)", "Self Subtraction"),
-    ("sub_self2", "=(+(X,-(X)),0)", "Self Subtraction"),
-    ("sub_self3", "=(+(-(X),X),0)", "Self Subtraction"),
-    ("div_self", "=(/(X,X),1)", "Self Division"),
-    ("distribute_property", "=(*(X,+(Y,Z)),+(*(X,Y),*(X,Z)))", "Distributive Property"), // X*(Y+Z) = X*Y + X*Z
-    ("distribute_property2", "=(*(+(Y,Z),X),+(*(Y,X),*(Z,X)))", "Distributive Property"), // (Y+Z)*X = Y*X + Z*X
-];
-pub fn get_algebra_rules(ctx: &Context) -> RuleMap {
-    let mut rules = HashMap::new();
-    for (rule_id, rule_str, rule_label) in ALGEBRA_RULE_STRING_TUPLE.iter() {
-        let rule_expr = parser_prefix::to_expression(rule_str, ctx).unwrap();
-        rules.insert(rule_id.to_string(), Rule {
-            id: rule_id.to_string(), 
-            expression: rule_expr,
-            label: rule_label.to_string(),
-        });
-    }
-    return rules;
-}
-
 
 fn generate_simple_apply_arithmetic_to_both_side_expr(op: &ArithmeticOperator, expr: &Expression) -> Expression {
     // =(_(X),{op}(X,{expr}))

@@ -3,6 +3,7 @@ use equaio::expression::Address;
 use equaio::vec_strings;
 use equaio::parser_prefix;
 use equaio::address;
+use equaio::algebra;
 use equaio::arithmetic::get_arithmetic_ctx;
 use equaio::block::{Block, block_builder};
 use equaio::worksheet::Worksheet;
@@ -11,6 +12,7 @@ use equaio::worksheet::Worksheet;
 mod simple_block {
     use super::*;
     use block_builder as bb;
+    use equaio::rule::{self, RuleMap};
     
     #[test]
     fn unary() {
@@ -147,7 +149,23 @@ mod simple_block {
     
     #[test]
     fn form_worksheet(){
-        let mut ws = Worksheet::init_algebra_worksheet(vec_strings!["x"]);
+        fn get_algebra_rules() -> RuleMap {
+            let filepath = "rules/algebra.json";
+            let rulestr = std::fs::read_to_string(filepath).unwrap();
+            return rule::parse_rulemap_from_json(&rulestr).unwrap();
+        }
+        fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
+            let mut ws = Worksheet::new();
+            let ctx = get_arithmetic_ctx().add_params(variables);
+            ws.set_expression_context(ctx);
+            ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
+            ws.set_rule_map(get_algebra_rules());
+            ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
+                algebra::get_possible_actions::algebra(expr,ctx,addr_vec));
+            return ws;
+        }
+        
+        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
         let expr = parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap();
         assert_eq!(expr.clone().to_string(true), "(((2 * x) - 1) = 3)");
         ws.introduce_expression(expr.clone());
