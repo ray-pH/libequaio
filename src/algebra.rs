@@ -1,7 +1,7 @@
 use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, expression_builder as eb};
 use crate::worksheet::{Action, ExpressionSequence, Worksheet, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError, get_arithmetic_ctx};
-use crate::rule::Rule;
+use crate::rule::{Rule, RuleMap};
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
 use std::collections::HashMap;
@@ -254,7 +254,7 @@ pub const ALGEBRA_RULE_STRING_TUPLE : [(&str, &str, &str); 15] = [
     ("distribute_property", "=(*(X,+(Y,Z)),+(*(X,Y),*(X,Z)))", "Distributive Property"), // X*(Y+Z) = X*Y + X*Z
     ("distribute_property2", "=(*(+(Y,Z),X),+(*(Y,X),*(Z,X)))", "Distributive Property"), // (Y+Z)*X = Y*X + Z*X
 ];
-pub fn get_algebra_rules(ctx: &Context) -> HashMap<String, Rule> {
+pub fn get_algebra_rules(ctx: &Context) -> RuleMap {
     let mut rules = HashMap::new();
     for (rule_id, rule_str, rule_label) in ALGEBRA_RULE_STRING_TUPLE.iter() {
         let rule_expr = parser_prefix::to_expression(rule_str, ctx).unwrap();

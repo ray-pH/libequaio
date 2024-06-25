@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::arithmetic::get_arithmetic_ctx;
 use crate::expression::{Address, Context, Expression, ExpressionError};
 use crate::parser_prefix;
@@ -9,6 +10,8 @@ pub struct Rule {
     pub expression: Expression,
     pub label: String,
 }
+
+pub type RuleMap = HashMap<String, Rule>;
 
 impl Expression {
     pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
@@ -185,4 +188,10 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
     }
     
     return Ok(rules);
+}
+
+pub fn parse_rulemap_from_json(json_string: &str) -> Result<RuleMap, ParserError> {
+    let rule_vec = parse_ruleset_from_json(json_string)?;
+    let rule_map = HashMap::from_iter(rule_vec.into_iter().map(|rule| (rule.id.clone(), rule)));
+    return Ok(rule_map);
 }
