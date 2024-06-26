@@ -125,7 +125,9 @@ impl Expression {
                 }
             }
         }
-        return expr;
+        return expr
+            .normalize_two_children_assoc_train_to_binary_op(&ctx.binary_ops)
+            .normalize_single_children_assoc_train()
     }
     
     pub fn apply_function_to_both_side(&self, fn_expr: Expression) -> Result<Expression, AlgebraError> {
