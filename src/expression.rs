@@ -773,7 +773,7 @@ pub mod get_possible_actions {
     use super::*;
     pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
         if addr_vec.len() <= 0 { return vec![]; }
-        let addr = &addr_vec[0];
+        let addr = &addr_vec[addr_vec.len()-1];
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
         for (_, rule) in rule_map.iter() {
