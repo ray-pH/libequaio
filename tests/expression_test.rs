@@ -59,6 +59,20 @@ mod basic {
         let new_expr = expr.substitute_symbol("b".to_string(), "x".to_string());
         assert_eq!(new_expr.to_string(true), "(a + (x + c))");
     }
+    
+    #[test]
+    fn swap_assoc_train_children() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d"],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        let expr = parser_prefix::to_expression("+(a,b,c,d)", &ctx).unwrap();
+        assert_eq!(expr.to_string(true), "(a + b + c + d)");
+        let new_expr = expr.swap_assoc_train_children(1, 2).unwrap();
+        assert_eq!(new_expr.to_string(true), "(a + c + b + d)");
+    }
 }
 
 #[cfg(test)]

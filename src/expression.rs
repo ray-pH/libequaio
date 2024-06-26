@@ -126,6 +126,9 @@ impl Address {
     pub fn head(&self) -> usize {
         return self.path[0];
     }
+    pub fn last(&self) -> usize {
+        return self.path[self.path.len()-1];
+    }
     pub fn parent(&self) -> Self {
         return Address { path: self.path[..self.path.len()-1].to_vec(), sub: self.sub };
     }
@@ -612,6 +615,31 @@ impl Expression {
         }
     }
     
+    pub fn swap_assoc_train_children_at(&self, index0: usize, index1: usize, addr: &Address) 
+    -> Result<Expression, ExpressionError> {
+        let expr = self.at(addr)?;
+        let new_expr = expr.swap_assoc_train_children(index0, index1)?;
+        return self.replace_expression_at(new_expr, addr);
+    }
+    
+    pub fn swap_assoc_train_children(&self, index0: usize, index1: usize) -> Result<Expression, ExpressionError> {
+        if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
+        let children = self.children.as_ref().unwrap();
+        let children_count = children.len();
+        
+        if index0 >= children_count || index1 >= children_count {
+            return Err(ExpressionError::InvalidAddress);
+        }
+        
+        let mut new_children = children.clone();
+        new_children.swap(index0, index1);
+        return Ok(Expression {
+            exp_type : self.exp_type.clone(),
+            symbol : self.symbol.clone(),
+            children : Some(new_children),
+        });
+    }
+    
     fn replace_expression_at_train(&self, new_expr: Expression, sub_address: usize) -> Result<Expression, ExpressionError> {
         if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
         let children = self.children.as_ref().unwrap();
@@ -784,4 +812,29 @@ pub mod get_possible_actions {
         }
         return possible_actions;
     }
+    
+    pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &Vec<Address>) 
+    -> Vec<(Action, Expression)> 
+    {
+        if addr_vec.len() <= 2 { return vec![]; }
+        let addr0 = &addr_vec[addr_vec.len()-1];
+        let addr1 = &addr_vec[addr_vec.len()-2];
+        if addr0.is_empty() || addr1.is_empty() { return vec![]; }
+        
+        // non-empty address must have parent
+        let addr_parent0 = addr0.parent();
+        let addr_parent1 = addr1.parent();
+        if addr_parent0 != addr_parent1 { return vec![]; }
+        
+        let addr_parent = addr_parent0;
+        let index0 = addr0.last();
+        let index1 = addr1.last();
+        
+        let new_expr = expr.swap_assoc_train_children_at(index0, index1, &addr_parent);
+        if new_expr.is_err() { return vec![]; }
+        
+        let new_expr = new_expr.unwrap();
+        return vec![(Action::ApplyAction("Reorder".to_string()), new_expr)];
+    }
+    
 }
