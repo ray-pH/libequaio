@@ -50,6 +50,22 @@
             "id": "add_self",
             "expr_prefix": "=(+(X,X),*(2,X))",
             "label": "Self addition"
+        },
+        {
+            "id": "distribution",
+            "expr_prefix": "=(*(X,+(A,B)),+(*(X,A),*(X,B)))",
+            "label": "Distribution"
+        },
+        {
+            "id": "factor_out_left",
+            "expr_prefix": "=(+(*(X,A),*(X,B)),*(X,+(A,B)))",
+            "label": "Factoring Out",
+            "variations": []
+        },
+        {
+            "id": "factor_out",
+            "expr_prefix": "=(+(*(A,X),*(B,X)),*(+(A,B),X))",
+            "label": "Factoring Out"
         }
     ]
 }

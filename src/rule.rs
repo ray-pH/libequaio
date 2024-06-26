@@ -53,6 +53,7 @@ struct RuleJSON {
     id: String,
     label: Option<String>,
     expr_prefix: Option<String>,
+    variations: Option<Vec<RulesetVariationJSON>>,
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct RulesetJSON {
@@ -166,15 +167,23 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
     let name = ruleset_json.name;
     let rules_json = ruleset_json.rules;
     let context = resolve_context_json(ruleset_json.context)?;
-    let variations = resolve_variations_json(ruleset_json.variations, &context)?;
+    let ruleset_variations = resolve_variations_json(ruleset_json.variations, &context)?;
     
     for rule_json in rules_json {
         let id = format!("{}/{}", name, rule_json.id);
         let label = rule_json.label.unwrap_or_default();
+        let rule_variations = rule_json.variations.map(|v| resolve_variations_json(Some(v), &context));
+        
+        let variations = match rule_variations {
+            Some(Ok(variations)) => variations,
+            Some(Err(err)) => return Err(err),
+            None => ruleset_variations.clone(),
+        };
+        
         if let Some(expr_prefix) = rule_json.expr_prefix {
             let expression = parser_prefix::to_expression(&expr_prefix, &context)
                 .ok_or(ParserError::InvalidRule(expr_prefix))?;
-            let var_rules = generate_variations(&Rule {id: id.clone(), label, expression}, variations.clone());
+            let var_rules = generate_variations(&Rule {id: id.clone(), label, expression}, variations);
             
             if var_rules.len() == 1 {
                 let mut rule = var_rules.first().unwrap().clone();

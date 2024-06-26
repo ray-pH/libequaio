@@ -193,4 +193,51 @@ mod simple_algebra {
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(x = 2)");
     }
+    
+    #[test]
+    fn question3() {
+        let ctx = arithmetic::get_arithmetic_ctx()
+            .add_params(vec_strings!["x"])
+            .add_flag(AlgebraCtxFlags::SimplifyOneAndZero);
+        let algebra_rules = get_algebra_rules();
+        
+        // 4x - 4 = 2 - 3x
+        let expr = parser_prefix::to_expression("=(-(*(4,x),4),-(2,*(3,x)))", &ctx).unwrap();
+        assert_eq!(expr.to_string(true), "(((4 * x) - 4) = (2 - (3 * x)))");
+        let func = parser_prefix::to_expression("=(_(X),+(X,*(3,x)))", &ctx).unwrap();
+        let expr = expr.apply_function_to_both_side(func)
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (-4) + (3 * x)) = (2 + (-(3 * x)) + (3 * x)))");
+        let rule_eq = &algebra_rules.get("algebra/add_negative_self/1").unwrap().expression;
+        let expr = expr.apply_equation_at(rule_eq, &address![1].sub(1))
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (-4) + (3 * x)) = 2)");
+        let func = parser_prefix::to_expression("=(_(X),+(X,4))", &ctx).unwrap();
+        let expr = expr.apply_function_to_both_side(func)
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (-4) + (3 * x) + 4) = (2 + 4))");
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![1])
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (-4) + (3 * x) + 4) = 6)");
+        let expr = expr.swap_assoc_train_children_at(1, 2, &address![0])
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (3 * x) + (-4) + 4) = 6)");
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![0].sub(2))
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 * x) + (3 * x)) = 6)");
+        let rule_eq = &algebra_rules.get("algebra/factor_out/0").unwrap().expression;
+        let expr = expr.apply_equation_at(rule_eq, &address![0])
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((4 + 3) * x) = 6)");
+        let expr = expr.apply_simple_arithmetic_equation_at(&address![0,0])
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "((7 * x) = 6)");
+        let func = parser_prefix::to_expression("=(_(X),/(X,7))", &ctx).unwrap();
+        let expr = expr.apply_function_to_both_side(func)
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(((7 * x) / 7) = (6 / 7))");
+        let expr = expr.apply_fraction_arithmetic_at(0, 0, &address![0])
+            .unwrap().normalize_algebra(&ctx);
+        assert_eq!(expr.to_string(true), "(x = (6 / 7))");
+    }
 }
