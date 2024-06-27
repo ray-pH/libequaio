@@ -27,6 +27,7 @@ impl Default for ExpressionType {
     fn default() -> Self { ExpressionType::ValueConst }
 }
 impl ExpressionType {
+    pub fn variadic_string() -> String { "...".into() }
     pub fn is_variadic_str(str: &str) -> bool {
         return str == "...";
     }
@@ -221,6 +222,7 @@ pub enum ExpressionError {
     NotAnEquation,
     NotAnImplication,
     NotAnAssocTrain,
+    NotAParentOfVariadic,
     InvalidRule,
 }
 
@@ -257,6 +259,9 @@ impl Expression {
     pub fn is_variable(&self) -> bool {
         return self.exp_type == ExpressionType::ValueVar;
     }
+    pub fn is_constant(&self) -> bool {
+        return self.exp_type == ExpressionType::ValueConst;
+    }
     pub fn is_statement(&self) -> bool {
         return self.exp_type == ExpressionType::StatementOperatorBinary;
     }
@@ -286,6 +291,7 @@ impl Expression {
             None => None,
         }
     }
+    
     pub fn is_contain_variable(&self) -> bool {
         if self.is_variable() { return true; }
         if self.children.is_none() { return false; }
@@ -293,6 +299,25 @@ impl Expression {
         // return true if any of the children is a variable
         return children.iter().any(|c| c.is_contain_variable());
     }
+    
+    // pub fn is_contain_variadic(&self) -> bool {
+    //     if self.exp_type == ExpressionType::Variadic { return true; }
+    //     if self.children.is_none() { return false; }
+    //     let children = self.children.as_ref().unwrap();
+    //     // return true if any of the children is a variadic
+    //     return children.iter().any(|c| c.is_contain_variadic());
+    // }
+    
+    // pub fn count_contained_variadic(&self) -> usize {
+    //     if self.exp_type == ExpressionType::Variadic { return 1; }
+    //     if self.children.is_none() { return 0; }
+    //     let children = self.children.as_ref().unwrap();
+    //     return children.iter().map(|c| c.count_contained_variadic()).sum();
+    // }
+    
+    // pub fn is_contain_only_one_variadic(&self) -> bool {
+    //     return self.count_contained_variadic() == 1;
+    // }
     
     pub fn is_equivalent_to(&self, other: &Self) -> bool {
         let match_map = self.pattern_match_this_node(other);
@@ -339,7 +364,7 @@ impl Expression {
             },
             ExpressionType::AssocTrain if self.is_parent_of_variadic() => {
                 if let Ok(grandchild) = self.at(&address![0,0]){
-                    let variables = grandchild.collect_var();
+                    let variables = grandchild.collect_var(None);
                     let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
                     
                     let mut granchild1 = grandchild.clone();
@@ -381,10 +406,15 @@ impl Expression {
         }
     }
     
-    pub fn collect_var(&self) -> Vec<Expression> {
-        if self.is_variable() { return vec![self.clone()]; }
+    pub fn collect_var(&self, const_symbols: Option<HashSet<String>>) -> Vec<Expression> {
+        if self.is_variable() { 
+            if let Some(const_symbols) = const_symbols {
+                if const_symbols.contains(&self.symbol) { return Vec::default(); }
+            }
+            return vec![self.clone()]; 
+        }
         if let Some(children) = &self.children {
-            return children.iter().map(|c| c.collect_var()).flatten().collect();
+            return children.iter().map(|c| c.collect_var(const_symbols.clone())).flatten().collect();
         }
         return Vec::default();
     }
@@ -398,6 +428,27 @@ impl Expression {
             }
         }
         return new_exp;
+    }
+    
+    pub fn expand_variadic(&self, n: usize, const_symbols: Option<HashSet<String>>) -> Result<Expression, ExpressionError> {
+        if !self.is_parent_of_variadic() { return Err(ExpressionError::NotAParentOfVariadic); }
+        
+        let inner_expr = self.at(&address![0,0])?;
+        let variables = inner_expr.collect_var(const_symbols);
+        let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
+        
+        let mut children: Vec<_> = (0..n).map(|_| inner_expr.clone()).collect();
+        for symbol in &variable_symbols {
+            for i in 0..n {
+                let new_symbol = symbol.clone() + "_" + &(i+1).to_string();
+                children[i] = children[i].substitute_symbol(symbol.clone(), new_symbol);
+            }
+        }
+        return Ok(Expression {
+            exp_type: ExpressionType::AssocTrain,
+            symbol: self.symbol.clone(),
+            children: Some(children)
+        })
     }
     
     pub fn lhs(&self) -> Option<&Expression> {
@@ -601,25 +652,12 @@ impl Expression {
                 if !self.is_assoc_train() { return None; }
                 if self.children.is_none() { return None; }
                 let children_len = self.children.as_ref().unwrap().len();
-                
-                let inner_pattern = pattern.at(&address![0,0]).ok()?;
-                let variables = inner_pattern.collect_var();
-                let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
-                
-                let mut inner_patterns: Vec<_> = (0..children_len).map(|_| inner_pattern.clone()).collect();
-                for symbol in &variable_symbols {
-                    for i in 0..children_len {
-                        let new_symbol = symbol.clone() + "_" + &(i+1).to_string();
-                        inner_patterns[i] = inner_patterns[i].substitute_symbol(symbol.clone(), new_symbol);
-                    }
-                }
-                
-                let new_pattern = Expression {
-                    exp_type: ExpressionType::AssocTrain,
-                    symbol: pattern.symbol.clone(),
-                    children: Some(inner_patterns),
-                };
-                return self.pattern_match_this_node(&new_pattern);
+                let new_pattern = pattern.expand_variadic(children_len, None).ok()?;
+                let mut match_map = self.pattern_match_this_node(&new_pattern)?;
+                match_map.insert(
+                    ExpressionType::variadic_string(), 
+                    expression_builder::constant(&children_len.to_string()));
+                return Some(match_map);
             },
             // if the pattern is an operator, then it must match
             // then, pattern match each child
@@ -658,6 +696,23 @@ impl Expression {
             ExpressionType::ValueVar => {
                 if let Some(expr) = match_map.get(&self.symbol) { return expr.clone(); }
                 return self.clone();
+            },
+            _ if self.is_parent_of_variadic() => {
+                if let Some(n_expr) = match_map.get(&ExpressionType::variadic_string()) {
+                    let n = n_expr.symbol.parse::<usize>();
+                    if n.is_err() { return self.clone(); }
+                    let n = n.unwrap();
+                    
+                    let const_symbols : HashSet<String> = match_map.iter()
+                        .filter(|(_,v)| v.is_constant())
+                        .map(|(k,_)| k.clone())
+                        .collect();
+                    let resolved_self = self.expand_variadic(n, Some(const_symbols));
+                    if resolved_self.is_err() { return self.clone(); }
+                    return resolved_self.unwrap().apply_match_map(match_map);
+                } else {
+                    return self.clone();
+                }
             },
             _ if self.children.is_some() => {
                 let children = self.children.as_ref().unwrap();

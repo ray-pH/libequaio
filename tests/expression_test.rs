@@ -572,9 +572,49 @@ mod variadic {
         let expr = parser_prefix::to_expression("+(x,y,z)", &ctx).unwrap();
         let pattern = parser_prefix::to_expression("+(...(A))", &ctx).unwrap();
         let map = expr.pattern_match_this_node(&pattern).unwrap();
-        assert_eq!(map.len(), 3);
+        assert_eq!(map.len(), 4);
+        assert_eq!(map.get("...").unwrap().to_string(true), "3");
         assert_eq!(map.get("A_1").unwrap().to_string(true), "x");
         assert_eq!(map.get("A_2").unwrap().to_string(true), "y");
         assert_eq!(map.get("A_3").unwrap().to_string(true), "z");
+    }
+    
+    #[test]
+    fn apply_match_map() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d", "x"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        
+        let expr = parser_prefix::to_expression("*(x,+(a,b,c))", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(*(X,+(...(A))),+(...(*(X,A))))", &ctx).unwrap();
+        
+        let eq_children = rule_eq.children.as_ref().unwrap();
+        let lhs = &eq_children[0];
+        let match_map = expr.pattern_match_this_node(lhs).unwrap();
+        let equation = rule_eq.apply_match_map(&match_map);
+        assert_eq!(equation.to_string(true), "((x * (a + b + c)) = ((x * a) + (x * b) + (x * c)))");
+    }
+    
+    #[test]
+    fn apply_equation() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d", "x"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        
+        let expr = parser_prefix::to_expression("*(x,+(a,b,c))", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(*(X,+(...(A))),+(...(*(X,A))))", &ctx).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(&rule_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "((x * a) + (x * b) + (x * c))");
+        
+        let expr = parser_prefix::to_expression("*(x,+(a,b,c,d))", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(*(X,+(...(A))),+(...(*(X,A))))", &ctx).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(&rule_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "((x * a) + (x * b) + (x * c) + (x * d))");
     }
 }
