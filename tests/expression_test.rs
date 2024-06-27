@@ -275,6 +275,20 @@ mod pattern_matching {
     }
     
     #[test]
+    fn assoc_train() {
+        let matches = expr_pattern_match("+(x,y,z)", "+(A,B,C)");
+        print_matches(matches.clone());
+        assert_eq!(matches.len(), 1);
+        
+        let (address0, map0) = &matches[0];
+        assert_eq!(address0, &address![]);
+        assert_eq!(map0.len(), 3);
+        assert_eq!(map0.get("A").unwrap().to_string(true), "x");
+        assert_eq!(map0.get("B").unwrap().to_string(true), "y");
+        assert_eq!(map0.get("C").unwrap().to_string(true), "z");
+    }
+    
+    #[test]
     fn on_assoc_train() {
         let matches = expr_pattern_match("+(x,y,z)", "+(A,B)");
         print_matches(matches.clone());
@@ -516,5 +530,51 @@ mod equivalence {
         let expr1 = parser_prefix::to_expression("*(+(x,A),B)", &ctx).unwrap();
         let expr2 = parser_prefix::to_expression("*(+(B,x),C)", &ctx).unwrap();
         assert!(!expr1.is_equivalent_to(&expr2));
+    }
+}
+
+#[cfg(test)]
+mod variadic {
+    use exp::ExpressionType;
+
+    use super::*;
+    
+    #[test]
+    fn parse_and_string() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        
+        let expr = parser_prefix::to_expression("+(...(A))", &ctx).unwrap();
+        assert_eq!(expr.at(&address![0]).unwrap().exp_type, ExpressionType::Variadic);
+        assert_eq!(expr.to_string(true), "(A_1 + A_2 + ...)");
+        
+        let expr = parser_prefix::to_expression("+(...(*(A,x)))", &ctx).unwrap();
+        assert_eq!(expr.at(&address![0]).unwrap().exp_type, ExpressionType::Variadic);
+        assert_eq!(expr.to_string(true), "((A_1 * x) + (A_2 * x) + ...)");
+        
+        let expr = parser_prefix::to_expression("+(...(*(A,B)))", &ctx).unwrap();
+        assert_eq!(expr.at(&address![0]).unwrap().exp_type, ExpressionType::Variadic);
+        assert_eq!(expr.to_string(true), "((A_1 * B_1) + (A_2 * B_2) + ...)");
+    }
+    
+    #[test]
+    fn pattern_match() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y"],
+            binary_ops: vec_strings!["+"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        let expr = parser_prefix::to_expression("+(x,y,z)", &ctx).unwrap();
+        let pattern = parser_prefix::to_expression("+(...(A))", &ctx).unwrap();
+        let map = expr.pattern_match_this_node(&pattern).unwrap();
+        assert_eq!(map.len(), 3);
+        assert_eq!(map.get("A_1").unwrap().to_string(true), "x");
+        assert_eq!(map.get("A_2").unwrap().to_string(true), "y");
+        assert_eq!(map.get("A_3").unwrap().to_string(true), "z");
     }
 }

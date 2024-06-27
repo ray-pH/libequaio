@@ -102,6 +102,7 @@ fn tokens_to_expression(tokens: &Vec<Token>, ctx: &Context) -> Option<Expression
             |t| tokens_to_expression(&t,ctx)).collect::<Option<Vec<Expression>>>();
         if children.is_none() { return None; }
         let exp_type = match children.as_ref().unwrap().len() {
+            1 if ExpressionType::is_variadic_str(s) => ExpressionType::Variadic,
             1 if ctx.unary_ops.contains(s) => ExpressionType::OperatorUnary,
             2 if ctx.binary_ops.contains(s) => ExpressionType::OperatorBinary,
             2 if StatementSymbols::from_str(s.as_str()).is_some() => ExpressionType::StatementOperatorBinary,

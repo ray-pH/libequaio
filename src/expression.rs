@@ -17,9 +17,19 @@ pub enum ExpressionType {
     // it's hard to go from the first representation to the second one, or vice versa
     // it requires a lot of application of the associative property
     AssocTrain, 
+    // `Variadic` is a special type for desribing rules that can have any number of arguments
+    // ex `k*(a+b+...+n) = k*a + k*b + ... + k*n` works for any number of arguments
+    // technically you can work with multiple application of binary addition, but it's not practical
+    // `Variadic` can only be inside AssocTrain
+    Variadic, 
 }
 impl Default for ExpressionType {
     fn default() -> Self { ExpressionType::ValueConst }
+}
+impl ExpressionType {
+    pub fn is_variadic_str(str: &str) -> bool {
+        return str == "...";
+    }
 }
 
 pub enum StatementSymbols {
@@ -228,6 +238,15 @@ impl Expression {
     pub fn is_assoc_train(&self) -> bool {
         return self.exp_type == ExpressionType::AssocTrain;
     }
+    pub fn is_parent_of_variadic(&self) -> bool {
+        if !self.is_assoc_train() { return false; }
+        if let Some(children) = &self.children {
+            if let Some(first) = children.first() {
+                return first.exp_type == ExpressionType::Variadic;
+            }
+        }
+        return false;
+    }
     pub fn is_value(&self) -> bool {
         match self.exp_type {
             ExpressionType::ValueConst | 
@@ -318,6 +337,30 @@ impl Expression {
                 result.push_str(")");
                 result
             },
+            ExpressionType::AssocTrain if self.is_parent_of_variadic() => {
+                if let Ok(grandchild) = self.at(&address![0,0]){
+                    let variables = grandchild.collect_var();
+                    let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
+                    
+                    let mut granchild1 = grandchild.clone();
+                    let mut granchild2 = grandchild.clone();
+                    for symbol in &variable_symbols {
+                        let new_symbol1 = symbol.clone() + "_1";
+                        let new_symbol2 = symbol.clone() + "_2";
+                        granchild1 = granchild1.substitute_symbol(symbol.clone(), new_symbol1);
+                        granchild2 = granchild2.substitute_symbol(symbol.clone(), new_symbol2);
+                    }
+                    
+                    let string = format!("{} {} {} {} ...", 
+                        granchild1.to_string(parentheses),  self.symbol, 
+                        granchild2.to_string(parentheses), self.symbol
+                    );
+                    if parentheses { return format!("({})", string); }
+                    else { return string; }
+                } else {
+                    return "UNREACHABLE, VARIADIC MARKER SHOULD HAVE A CHILDREN".to_string();
+                }
+            },
             ExpressionType::AssocTrain => {
                 let mut result = String::new();
                 if parentheses { result.push_str("(") };
@@ -332,7 +375,18 @@ impl Expression {
                 if parentheses { result.push_str(")") };
                 result
             },
+            ExpressionType::Variadic => {
+                return "UNREACHABLE, VARIADIC MARKER SHOULD NEVER BE PRINTED".to_string();
+            }
         }
+    }
+    
+    pub fn collect_var(&self) -> Vec<Expression> {
+        if self.is_variable() { return vec![self.clone()]; }
+        if let Some(children) = &self.children {
+            return children.iter().map(|c| c.collect_var()).flatten().collect();
+        }
+        return Vec::default();
     }
     
     pub fn substitute_symbol(&self, from: String, to: String) -> Expression {
@@ -540,9 +594,36 @@ impl Expression {
                 map.insert(pattern.symbol.clone(), self.clone());
                 Some(map)
             },
+            // if the pattern is a variadic assoc train,
+            // then expand the pattern first to have the same size as the train
+            AssocTrain if pattern.is_parent_of_variadic() => {
+                // invalid if the expr is not a train
+                if !self.is_assoc_train() { return None; }
+                if self.children.is_none() { return None; }
+                let children_len = self.children.as_ref().unwrap().len();
+                
+                let inner_pattern = pattern.at(&address![0,0]).ok()?;
+                let variables = inner_pattern.collect_var();
+                let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
+                
+                let mut inner_patterns: Vec<_> = (0..children_len).map(|_| inner_pattern.clone()).collect();
+                for symbol in &variable_symbols {
+                    for i in 0..children_len {
+                        let new_symbol = symbol.clone() + "_" + &(i+1).to_string();
+                        inner_patterns[i] = inner_patterns[i].substitute_symbol(symbol.clone(), new_symbol);
+                    }
+                }
+                
+                let new_pattern = Expression {
+                    exp_type: ExpressionType::AssocTrain,
+                    symbol: pattern.symbol.clone(),
+                    children: Some(inner_patterns),
+                };
+                return self.pattern_match_this_node(&new_pattern);
+            },
             // if the pattern is an operator, then it must match
             // then, pattern match each child
-            StatementOperatorBinary | OperatorUnary | OperatorBinary | OperatorNary => {
+            StatementOperatorBinary | OperatorUnary | OperatorBinary | OperatorNary | AssocTrain => {
                 // invalid if the symbol or type is different
                 if pattern.symbol != self.symbol { return None; }
                 if pattern.exp_type != self.exp_type { return None; }
@@ -564,8 +645,8 @@ impl Expression {
                 }
                 Some(map)
             },
-            AssocTrain => {
-              todo!()
+            Variadic => {
+                todo!()
             }
         }
     }

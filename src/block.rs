@@ -32,6 +32,7 @@ impl Block {
             ExpressionType::ValueConst | ExpressionType::ValueVar => {
                 block_builder::symbol(symbol, addr)
             },
+            ExpressionType::Variadic | 
             ExpressionType::OperatorUnary => {
                 let operator_block = block_builder::symbol(symbol, addr.clone());
                 let expr_children = expr.children.as_ref().expect("UnaryOps have one child");
