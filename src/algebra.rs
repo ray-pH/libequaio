@@ -42,6 +42,7 @@ impl From<ArithmeticError> for AlgebraError {
 pub enum AlgebraCtxFlags {
     SimplifyOneAndZero,
 }
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for AlgebraCtxFlags {
     fn to_string(&self) -> String {
         return match self {
@@ -65,7 +66,7 @@ impl Expression {
             .normalize_two_children_assoc_train_to_binary_op(&ctx.binary_ops)
             .normalize_add_negative_to_sub()
             .normalize_single_children_assoc_train()
-            .normalize_simplify_one_and_zero(&ctx)
+            .normalize_simplify_one_and_zero(ctx)
     }
     
     /// turn the numerator and denominator into an AssocTrain of Mul
@@ -113,12 +114,12 @@ impl Expression {
         
         let mut prev_expr = Expression::default();
         let mut expr = self.clone();
-        while &expr != &prev_expr {
+        while expr != prev_expr {
             prev_expr = expr.clone();
             for e in &rule_exprs {
                 let possible_eq_addr = expr.get_possible_equation_application_addresses(e);
-                if possible_eq_addr.len() < 1 { continue; }
-                let addr = possible_eq_addr.get(0)
+                if possible_eq_addr.is_empty() { continue; }
+                let addr = possible_eq_addr.first()
                     .expect("Expression::get_possible_equation_application_address is valid");
                 if let Ok(new_expr) = expr.apply_equation_at(e, addr) {
                     expr = new_expr;
@@ -232,7 +233,7 @@ fn generate_simple_apply_arithmetic_to_both_side_expr(op: &ArithmeticOperator, e
     );
 }
 fn generate_simple_apply_arithmetic_to_both_side_name(op: &ArithmeticOperator, expr: &Expression) -> String {
-    return format!("Apply {}{} to both side", op.to_string(), expr.to_string(true));
+    return format!("Apply {}{} to both side", op, expr.to_string(true));
 }
 
 // type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
@@ -241,7 +242,7 @@ pub mod get_possible_actions {
     use crate::expression;
 
     use super::*;
-    pub fn algebra(expr: &Expression, context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+    pub fn algebra(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         return vec![
             apply_operation_both_side(expr, addr_vec),
             arithmetic::get_possible_actions::arithmetic(expr, context, addr_vec),
@@ -250,13 +251,13 @@ pub mod get_possible_actions {
         ].into_iter().flatten().collect();
     }
     
-    pub fn apply_operation_both_side(expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>   {
+    pub fn apply_operation_both_side(expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>   {
         match f_apply_operation_both_side(expr, addr_vec) {
             Some((action, new_expr)) => vec![(action, new_expr)],
             None => vec![],
         }
     }
-    fn f_apply_operation_both_side(expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>   {
+    fn f_apply_operation_both_side(expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>   {
         if addr_vec.len() < 2 { return None; }
         let addr0 = &addr_vec[addr_vec.len()-2]; // =
         let addr1 = &addr_vec[addr_vec.len()-1];
@@ -275,18 +276,18 @@ pub mod get_possible_actions {
         let inverse_op = parent_arithmetic_op.inverse();
         let expr_target = expr.at(&addr_target).ok()?;
         
-        let result_expr = expr.apply_simple_arithmetic_to_both_side(&inverse_op, &expr_target).ok()?;
-        let action = Action::ApplyAction(generate_simple_apply_arithmetic_to_both_side_name(&inverse_op, &expr_target));
+        let result_expr = expr.apply_simple_arithmetic_to_both_side(&inverse_op, expr_target).ok()?;
+        let action = Action::ApplyAction(generate_simple_apply_arithmetic_to_both_side_name(&inverse_op, expr_target));
         return Some((action, result_expr));
     }
     
-    pub fn apply_fraction_arithmetic(expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>   {
+    pub fn apply_fraction_arithmetic(expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>   {
         match f_apply_fraction_arithmetic(expr, addr_vec) {
             Some((action, new_expr)) => vec![(action, new_expr)],
             None => vec![],
         }
     }
-    fn f_apply_fraction_arithmetic(expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>   {
+    fn f_apply_fraction_arithmetic(expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>   {
         if addr_vec.len() < 2 { return None; }
         let addr0 = &addr_vec[addr_vec.len()-2];
         let addr1 = &addr_vec[addr_vec.len()-1];

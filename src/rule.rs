@@ -121,7 +121,7 @@ fn f_generate_variation(
     
     //NOTE: only check the equivalence of the lhs
     let is_equivalent = match (expr.lhs(), new_expr.lhs()) {
-        (Some(expr_lhs), Some(new_lhs)) => expr_lhs.is_equivalent_to(&new_lhs),
+        (Some(expr_lhs), Some(new_lhs)) => expr_lhs.is_equivalent_to(new_lhs),
         _ => false,
     };
         
@@ -131,7 +131,7 @@ fn f_generate_variation(
     } else {
         let variation0 = f_generate_variation(expr, variation_rule, &to_modify_address);
         let variation1 = f_generate_variation(&new_expr, variation_rule, &to_modify_address);
-        return vec![variation0, variation1].concat();
+        return [variation0, variation1].concat();
     }
 }
 fn generate_variations_from_single_rule(base_expr: &Expression, variation_rule: &Expression) -> Vec<Expression> {
@@ -187,7 +187,7 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
             
             if var_rules.len() == 1 {
                 let mut rule = var_rules.first().unwrap().clone();
-                rule.id = id.clone();
+                rule.id.clone_from(&id);
                 rules.push(rule);
             } else {
                 rules.extend(var_rules);

@@ -23,6 +23,6 @@ fn main() {
         for (k,v) in map {
             println!("{} -> {}", k, v.to_string(true));
         }
-        println!("");
+        println!();
     }
 }

@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use super::expression::{Expression, ExpressionType, Context, StatementSymbols};
 
 #[derive(PartialEq, Clone)]
@@ -13,7 +14,7 @@ fn tokenize(s: String) -> Vec<Token> {
     let mut current_symbol = String::new();
 
     let push_symbol_if_any = |current_symbol: &mut String, tokens: &mut Vec<Token>| {
-        if current_symbol.len() > 0 {
+        if !current_symbol.is_empty() {
             tokens.push(Token::Symbol(current_symbol.clone()));
             current_symbol.clear();
         }
@@ -69,11 +70,11 @@ fn split_tokens_by_comma(tokens: &Vec<Token>) -> Vec<Vec<Token>> {
             },
         }
     }
-    if current.len() > 0 { result.push(current); }
+    if !current.is_empty() { result.push(current); }
     result
 }
 
-fn tokens_to_expression(tokens: &Vec<Token>, ctx: &Context) -> Option<Expression> {
+fn tokens_to_expression(tokens: &[Token], ctx: &Context) -> Option<Expression> {
     // first token must be a symbol
     if let Token::Symbol(ref s) = tokens[0] {
         if tokens.len() == 1 {
@@ -99,20 +100,19 @@ fn tokens_to_expression(tokens: &Vec<Token>, ctx: &Context) -> Option<Expression
         let inner_tokens = tokens[2..tokens.len() - 1].to_vec();
         let child_tokens = split_tokens_by_comma(&inner_tokens);
         let children = child_tokens.iter().map(
-            |t| tokens_to_expression(&t,ctx)).collect::<Option<Vec<Expression>>>();
-        if children.is_none() { return None; }
-        let exp_type = match children.as_ref().unwrap().len() {
+            |t| tokens_to_expression(t,ctx)).collect::<Option<Vec<Expression>>>()?;
+        let exp_type = match children.len() {
             1 if ExpressionType::is_variadic_str(s) => ExpressionType::Variadic,
             1 if ctx.unary_ops.contains(s) => ExpressionType::OperatorUnary,
             2 if ctx.binary_ops.contains(s) => ExpressionType::OperatorBinary,
-            2 if StatementSymbols::from_str(s.as_str()).is_some() => ExpressionType::StatementOperatorBinary,
+            2 if StatementSymbols::from_str(s.as_str()).is_ok() => ExpressionType::StatementOperatorBinary,
             _ if ctx.assoc_ops.contains(s) => ExpressionType::AssocTrain,
             _ => ExpressionType::OperatorNary,
         };
         return Some(Expression {
             exp_type,
             symbol: s.clone(),
-            children,
+            children: Some(children),
         });
     }
     None

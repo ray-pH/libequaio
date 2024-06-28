@@ -1,11 +1,12 @@
-use std::{cmp::Ordering, collections::{HashMap, HashSet}};
+use std::{cmp::Ordering, collections::{HashMap, HashSet}, fmt, str::FromStr};
 use super::utils;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub enum ExpressionType {
     OperatorUnary,
     OperatorBinary,
     OperatorNary,
+    #[default]
     ValueConst,
     ValueVar,
     StatementOperatorBinary,
@@ -23,9 +24,6 @@ pub enum ExpressionType {
     // `Variadic` can only be inside AssocTrain
     Variadic, 
 }
-impl Default for ExpressionType {
-    fn default() -> Self { ExpressionType::ValueConst }
-}
 impl ExpressionType {
     pub fn variadic_string() -> String { "...".into() }
     pub fn is_variadic_str(str: &str) -> bool {
@@ -37,19 +35,26 @@ pub enum StatementSymbols {
     Equal,
     Implies,
 }
+impl FromStr for StatementSymbols {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "=" => Ok(StatementSymbols::Equal),
+            "=>" => Ok(StatementSymbols::Implies),
+            _ => Err(()),
+        }
+    }
+}
+impl fmt::Display for StatementSymbols {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
 impl StatementSymbols {
-    pub fn to_string(&self) -> String { self.as_str().into() }
     pub fn as_str(&self) -> &str {
         match self {
             StatementSymbols::Equal => "=",
             StatementSymbols::Implies => "=>"
-        }
-    }
-    pub fn from_str(s: &str) -> Option<StatementSymbols> {
-        match s {
-            "=" => Some(StatementSymbols::Equal),
-            "=>" => Some(StatementSymbols::Implies),
-            _ => None,
         }
     }
 }
@@ -228,14 +233,14 @@ pub enum ExpressionError {
 
 impl Expression {
     pub fn is_operator(&self) -> bool {
-        match self.exp_type {
-            ExpressionType::OperatorUnary | 
-            ExpressionType::OperatorBinary | 
+        matches!(
+            self.exp_type,
+            ExpressionType::OperatorUnary |
+            ExpressionType::OperatorBinary |
             ExpressionType::OperatorNary |
             ExpressionType::StatementOperatorBinary |
-            ExpressionType::AssocTrain => true,
-            _ => false,
-        }
+            ExpressionType::AssocTrain
+        )
     }
     pub fn is_assoc_train(&self) -> bool {
         return self.exp_type == ExpressionType::AssocTrain;
@@ -250,11 +255,9 @@ impl Expression {
         return false;
     }
     pub fn is_value(&self) -> bool {
-        match self.exp_type {
-            ExpressionType::ValueConst | 
-            ExpressionType::ValueVar => true,
-            _ => false,
-        }
+        matches!(self.exp_type,
+            ExpressionType::ValueConst | ExpressionType::ValueVar
+        )
     }
     pub fn is_variable(&self) -> bool {
         return self.exp_type == ExpressionType::ValueVar;
@@ -286,10 +289,7 @@ impl Expression {
     pub fn identify_statement_operator(&self) -> Option<StatementSymbols> {
         if !self.is_statement() { return None; }
         let symbol = self.symbol.as_str();
-        match StatementSymbols::from_str(symbol) {
-            Some(s) => Some(s),
-            None => None,
-        }
+        return StatementSymbols::from_str(symbol).ok();
     }
     
     pub fn is_contain_variable(&self) -> bool {
@@ -354,12 +354,12 @@ impl Expression {
             ExpressionType::OperatorNary => {
                 let mut result = String::new();
                 result.push_str(&self.symbol);
-                result.push_str("(");
+                result.push('(');
                 for (i, c) in self.children.as_ref().unwrap().iter().enumerate() {
                     if i > 0 { result.push_str(", "); }
                     result.push_str(&c.to_string(parentheses));
                 }
-                result.push_str(")");
+                result.push(')');
                 result
             },
             ExpressionType::AssocTrain if self.is_parent_of_variadic() => {
@@ -388,16 +388,16 @@ impl Expression {
             },
             ExpressionType::AssocTrain => {
                 let mut result = String::new();
-                if parentheses { result.push_str("(") };
+                if parentheses { result.push('(') };
                 for (i, c) in self.children.as_ref().unwrap().iter().enumerate() {
                     if i > 0 { 
-                        result.push_str(" ");
+                        result.push(' ');
                         result.push_str(&self.symbol);
-                        result.push_str(" ");
+                        result.push(' ');
                     }
                     result.push_str(&c.to_string(parentheses));
                 }
-                if parentheses { result.push_str(")") };
+                if parentheses { result.push(')') };
                 result
             },
             ExpressionType::Variadic => {
@@ -414,14 +414,14 @@ impl Expression {
             return vec![self.clone()]; 
         }
         if let Some(children) = &self.children {
-            return children.iter().map(|c| c.collect_var(const_symbols.clone())).flatten().collect();
+            return children.iter().flat_map(|c| c.collect_var(const_symbols.clone())).collect();
         }
         return Vec::default();
     }
     
     pub fn substitute_symbol(&self, from: String, to: String) -> Expression {
         let mut new_exp = self.clone();
-        if new_exp.symbol == from { new_exp.symbol = to.clone(); }
+        if new_exp.symbol == from { new_exp.symbol.clone_from(&to); }
         if new_exp.children.is_some() {
             for c in new_exp.children.as_mut().unwrap() {
                 *c = c.substitute_symbol(from.clone(), to.clone());
@@ -430,6 +430,7 @@ impl Expression {
         return new_exp;
     }
     
+    #[allow(clippy::needless_range_loop)]
     pub fn expand_variadic(&self, n: usize, const_symbols: Option<HashSet<String>>) -> Result<Expression, ExpressionError> {
         if !self.is_parent_of_variadic() { return Err(ExpressionError::NotAParentOfVariadic); }
         
@@ -462,7 +463,7 @@ impl Expression {
 
     /// Get the expression from the address
     pub fn at(&self, address: &Address) -> Result<&Expression, ExpressionError> {
-        if address.path.len() == 0 { 
+        if address.path.is_empty() { 
             return Ok(self)
         }
         if self.children.is_none() { return Err(ExpressionError::InvalidAddress); }
@@ -650,8 +651,8 @@ impl Expression {
             AssocTrain if pattern.is_parent_of_variadic() => {
                 // invalid if the expr is not a train
                 if !self.is_assoc_train() { return None; }
-                if self.children.is_none() { return None; }
-                let children_len = self.children.as_ref().unwrap().len();
+                let children = self.children.as_ref()?;
+                let children_len = children.len();
                 let new_pattern = pattern.expand_variadic(children_len, None).ok()?;
                 let mut match_map = self.pattern_match_this_node(&new_pattern)?;
                 match_map.insert(
@@ -674,12 +675,11 @@ impl Expression {
                 // pattern match each child
                 let mut map = HashMap::new();
                 for i in 0..self_children.len() {
-                    let child_map = self_children[i].pattern_match_this_node(&pattern_children[i]);
-                    if child_map.is_none() { return None; }
+                    let child_map = self_children[i].pattern_match_this_node(&pattern_children[i])?;
                     // invalid if the child maps clash
-                    if !utils::is_hashmap_no_clash(&map, &child_map.clone().unwrap()) { return None; }
+                    if !utils::is_hashmap_no_clash(&map, &child_map) { return None; }
                     // merge the child map with the current map
-                    for (k,v) in child_map.unwrap() { map.insert(k,v); }
+                    for (k,v) in child_map { map.insert(k,v); }
                 }
                 Some(map)
             },
@@ -729,7 +729,7 @@ impl Expression {
     
     /// Create a new expression by replacing the expression at the address with the new expression
     pub fn replace_expression_at(&self, new_expr: Expression, addr: &Address) -> Result<Expression, ExpressionError> {
-        if addr.path.len() == 0 { 
+        if addr.path.is_empty() { 
             if addr.sub.is_none() { return Ok(new_expr);  }
             if !self.is_assoc_train() { return Err(ExpressionError::NotAnAssocTrain); }
             return self.replace_expression_at_train(new_expr, addr.sub.unwrap());
@@ -935,13 +935,13 @@ pub mod get_possible_actions {
     use crate::worksheet::{Action, WorksheetContext};
 
     use super::*;
-    pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
-        if addr_vec.len() <= 0 { return vec![]; }
+    pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
+        if addr_vec.is_empty() { return vec![]; }
         let addr = &addr_vec[addr_vec.len()-1];
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
         for (_, rule) in rule_map.iter() {
-            if let Ok(new_expr) = expr.apply_rule_at(&rule, addr) {
+            if let Ok(new_expr) = expr.apply_rule_at(rule, addr) {
                 let action = Action::ApplyRule(rule.label.clone());
                 possible_actions.push((action, new_expr));
             }
@@ -949,7 +949,7 @@ pub mod get_possible_actions {
         return possible_actions;
     }
     
-    pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &Vec<Address>) 
+    pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &[Address]) 
     -> Vec<(Action, Expression)> 
     {
         if addr_vec.len() <= 2 { return vec![]; }

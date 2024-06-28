@@ -1,14 +1,12 @@
 use crate::expression::{Address, Expression, ExpressionType};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub enum BlockType {
+    #[default]
     Symbol,
     HorizontalContainer,
     // VerticalContainer,
     FractionContainer,
-}
-impl Default for BlockType {
-    fn default() -> Self { BlockType::Symbol }
 }
 
 #[derive(Debug, PartialEq, Default)]
@@ -37,7 +35,7 @@ impl Block {
                 let operator_block = block_builder::symbol(symbol, addr.clone());
                 let expr_children = expr.children.as_ref().expect("UnaryOps have one child");
                 let operand_addr = addr.append(0);
-                let operand_expr = expr_children.get(0).expect("UnaryOps have one child");
+                let operand_expr = expr_children.first().expect("UnaryOps have one child");
                 let operand_block = Block::from_expression(operand_expr, operand_addr);
                 block_builder::horizontal_container(vec![operator_block, operand_block], addr)
             },
@@ -46,7 +44,7 @@ impl Block {
                 let operator_block = block_builder::symbol(symbol, addr.clone());
                 let expr_children = expr.children.as_ref().expect("BinaryOps have two children");
                 let left_addr = addr.append(0);
-                let left_expr = expr_children.get(0).expect("BinaryOps have two children");
+                let left_expr = expr_children.first().expect("BinaryOps have two children");
                 let left_block = Block::from_expression(left_expr, left_addr);
                 let right_addr = addr.append(1);
                 let right_expr = expr_children.get(1).expect("BinaryOps have two children");

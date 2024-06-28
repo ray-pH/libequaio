@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::expression::{Address, Expression, ExpressionError, ExpressionType, StatementSymbols};
 use crate::worksheet::{ExpressionSequence, Action, WorksheetContext};
 use super::expression as exp;
@@ -10,8 +11,12 @@ pub enum ArithmeticOperator {
     AddTrain, MulTrain,   // operator train
 }
 
+impl fmt::Display for ArithmeticOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
 impl ArithmeticOperator {
-    pub fn to_string(&self) -> String { self.as_str().into() }
     pub fn as_str(&self) -> &str {
         match self {
             ArithmeticOperator::Add => "+",
@@ -106,11 +111,10 @@ impl exp::Expression {
     }
     
     pub fn is_arithmetic_train_operator(&self) -> bool {
-        match self.identify_arithmetic_operator() {
-            Some(ArithmeticOperator::AddTrain) => true,
-            Some(ArithmeticOperator::MulTrain) => true,
-            _ => false,
-        }
+        matches!(
+            self.identify_arithmetic_operator(),
+            Some(ArithmeticOperator::AddTrain) | Some(ArithmeticOperator::MulTrain)
+        )
     }
     
     // directly calculatable means that the value can be calculated without needing to calculate the children first
@@ -191,7 +195,7 @@ impl exp::Expression {
                 let children = self.children.as_ref().unwrap();
                 let left = children[0].clone();
                 let right = children[1].clone();
-                let right_children = right.children.as_ref().map(|v| v.get(0))
+                let right_children = right.children.as_ref().map(|v| v.first())
                     .expect("Negative operator should have children")
                     .expect("Negative operator should have one children")
                     .clone();
@@ -332,18 +336,18 @@ impl ExpressionSequence {
 pub mod get_possible_actions {
 
     use super::*;
-    pub fn arithmetic(expr: &Expression, _context: &WorksheetContext, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+    pub fn arithmetic(expr: &Expression, _context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         return arithmetic_calculation(expr, addr_vec);
     }
     
-    pub fn arithmetic_calculation(root_expr: &Expression, addr_vec: &Vec<Address>) -> Vec<(Action, Expression)>  {
+    pub fn arithmetic_calculation(root_expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         match f_arithmetic_calculation(root_expr, addr_vec) {
             Some((action, new_expr)) => vec![(action, new_expr)],
             None => vec![],
         }
     }
-    fn f_arithmetic_calculation(root_expr: &Expression, addr_vec: &Vec<Address>) -> Option<(Action,Expression)>  {
-        if addr_vec.len() < 1 { return None; }
+    fn f_arithmetic_calculation(root_expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>  {
+        if addr_vec.is_empty() { return None; }
         let addr = &addr_vec[addr_vec.len()-1];
         let result = root_expr.apply_simple_arithmetic_equation_at(addr).ok()?;
         let equation_expr = root_expr.generate_simple_artithmetic_equation_at(addr).ok()?;

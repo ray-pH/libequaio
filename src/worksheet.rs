@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::{self, Debug}, rc::Rc};
 use crate::expression::Address;
 use crate::rule::Rule;
 use super::expression::{Context, Expression};
@@ -33,10 +33,12 @@ pub struct Worksheet {
     context: Rc<RefCell<WorksheetContext>>,
 }
 
-impl Action {
-    pub fn to_string(&self) -> String {
-        return self.as_str().to_string();
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
+}
+impl Action {
     pub fn as_str(&self) -> &str {
         match self {
             Action::Introduce => "Introduce",
@@ -66,7 +68,7 @@ impl ExpressionSequence {
         };
         if let Some(rule) = rule {
             let expr = self.last_expression();
-            let rule_label = format!("{}", rule.label);
+            let rule_label = rule.label.to_string();
             let result_expr = expr.apply_rule_at(&rule, addr);
             return self.try_push(Action::ApplyRule(rule_label), result_expr);
         } else {
