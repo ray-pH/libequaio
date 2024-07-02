@@ -59,6 +59,7 @@ impl StatementSymbols {
     }
 }
 
+/// flutter_rust_bridge:opaque
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Expression {
     pub exp_type: ExpressionType,
@@ -66,6 +67,7 @@ pub struct Expression {
     pub children: Option<Vec<Expression>>,
 }
 
+/// flutter_rust_bridge:opaque
 #[derive(Clone, Default)]
 pub struct Context {
     pub parameters: Vec<String>,
