@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, fmt::{self, Debug}, rc::Rc};
+use std::{collections::HashMap, fmt::{self, Debug}};
 use crate::expression::Address;
 use crate::rule::Rule;
 use super::expression::{Context, Expression};
@@ -13,7 +13,7 @@ pub enum Action {
     ApplyAction(String),
 }
 
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct WorksheetContext {
     expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
@@ -24,13 +24,13 @@ pub struct WorksheetContext {
 #[derive(Default)]
 pub struct ExpressionSequence {
     pub history: Vec<(Action, Expression)>,
-    context: Rc<RefCell<WorksheetContext>>,
+    context: WorksheetContext,
 }
 
 #[derive(Default)]
 pub struct Worksheet {
     expression_sequences: Vec<ExpressionSequence>,
-    context: Rc<RefCell<WorksheetContext>>,
+    context: WorksheetContext,
 }
 
 impl fmt::Display for Action {
@@ -50,11 +50,15 @@ impl Action {
 }
 
 impl ExpressionSequence {
-    pub fn new(ctx: Rc<RefCell<WorksheetContext>>) -> ExpressionSequence {
+    pub fn new(ctx: WorksheetContext) -> ExpressionSequence {
         return ExpressionSequence {
             context: ctx,
             history: vec![],
         };
+    }
+    
+    pub fn set_context(&mut self, ctx: WorksheetContext) {
+        self.context = ctx;
     }
     
     pub fn expression(&self, index: usize) -> Option<&Expression> {
@@ -62,10 +66,7 @@ impl ExpressionSequence {
     }
     
     pub fn apply_rule_at(&mut self, rule_id: &str, addr: &Address) -> bool {
-        let rule = {
-            let ctx = self.context.borrow();
-            ctx.rule_map.get(rule_id).cloned()
-        };
+        let rule = self.context.rule_map.get(rule_id).cloned();
         if let Some(rule) = rule {
             let expr = self.last_expression();
             let rule_label = rule.label.to_string();
@@ -99,7 +100,7 @@ impl ExpressionSequence {
     }
     
     fn normalize(&self, expr: &Expression) -> Expression {
-        let ctx = self.context.borrow();
+        let ctx = &self.context;
         if let Some(f) = ctx.normalization_function {
             return f(expr, &ctx.expression_context);
         } else {
@@ -108,9 +109,9 @@ impl ExpressionSequence {
     }
     
     pub fn get_possible_actions(&self, addr_vec: &Vec<Address>) -> Vec<(Action,Expression)> {
-        let ctx = self.context.borrow();
+        let ctx = &self.context;
         if let Some(f) = ctx.get_possible_actions_function {
-            return f(self.last_expression(), &ctx, addr_vec).into_iter()
+            return f(self.last_expression(), ctx, addr_vec).into_iter()
                 .map(|(action, expr)| {(action, self.normalize(&expr))}).collect();
         } else {
             return vec![];
@@ -132,42 +133,46 @@ impl Worksheet {
     pub fn new() -> Worksheet {
         let ctx = WorksheetContext::default();
         return Worksheet {
-            context: Rc::new(RefCell::new(ctx)),
+            context: ctx,
             expression_sequences: vec![],
         };
     }
     
     pub fn set_expression_context(&mut self, expression_ctx: Context) {
-        let mut ctx = self.context.borrow_mut();
-        ctx.expression_context = expression_ctx;
+        self.context.expression_context = expression_ctx;
+        self.propagate_context_update();
     }
     
     pub fn get_expression_context(&self) -> Context {
-        let ctx = self.context.borrow();
+        let ctx = &self.context;
         return ctx.expression_context.clone();
     }
     
     pub fn set_normalization_function(&mut self, f: NormalizationFunction) {
-        let mut ctx = self.context.borrow_mut();
-        ctx.normalization_function = Some(f);
+        self.context.normalization_function = Some(f);
+        self.propagate_context_update();
     }
     
     pub fn set_get_possible_actions_function(&mut self, f: GetPossibleActionsFunction) {
-        let mut ctx = self.context.borrow_mut();
-        ctx.get_possible_actions_function = Some(f);
+        self.context.get_possible_actions_function = Some(f);
+        self.propagate_context_update();
     }
     
     pub fn reset_rule_map(&mut self) { 
-        let mut ctx = self.context.borrow_mut();
-        ctx.rule_map.clear();
+        self.context.rule_map.clear();
+        self.propagate_context_update();
     }
     pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        let mut ctx = self.context.borrow_mut();
-        ctx.rule_map = rule_map;
+        self.context.rule_map = rule_map;
+        self.propagate_context_update();
     }
     pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
-        let mut ctx = self.context.borrow_mut();
-        ctx.rule_map.extend(rule_map);
+        self.context.rule_map.extend(rule_map);
+        self.propagate_context_update();
+    }
+    
+    fn propagate_context_update(&mut self) {
+        self.expression_sequences.iter_mut().for_each(|seq| seq.set_context(self.context.clone()));
     }
     
     pub fn introduce_expression(&mut self, expr: Expression) {
