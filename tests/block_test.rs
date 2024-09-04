@@ -169,7 +169,7 @@ mod simple_block {
         let expr = parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap();
         assert_eq!(expr.clone().to_string(true), "(((2 * x) - 1) = 3)");
         ws.introduce_expression(expr.clone());
-        let seq0 = ws.get_expression_sequence(0).unwrap();
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
         let expr0 = seq0.last_expression();
         assert_eq!(expr0.to_string(true), "(((2 * x) - 1) = 3)");
         let block = Block::from(expr0.clone());

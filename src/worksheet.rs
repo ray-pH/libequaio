@@ -22,9 +22,14 @@ pub struct WorksheetContext {
 }
 
 #[derive(Default)]
-pub struct ExpressionSequence {
+pub struct WorkableExpressionSequence {
     pub history: Vec<(Action, Expression)>,
     context: WorksheetContext,
+}
+
+#[derive(Default)]
+pub struct ExpressionSequence {
+    pub history: Vec<(Action, Expression)>,
 }
 
 #[derive(Default)]
@@ -48,10 +53,22 @@ impl Action {
     }
     
 }
-
+impl From<WorkableExpressionSequence> for ExpressionSequence {
+    fn from(seq: WorkableExpressionSequence) -> Self {
+        return ExpressionSequence { history: seq.history, };
+    }
+}
 impl ExpressionSequence {
-    pub fn new(ctx: WorksheetContext) -> ExpressionSequence {
-        return ExpressionSequence {
+    pub fn with_context(&self, ctx: WorksheetContext) -> WorkableExpressionSequence {
+        return WorkableExpressionSequence {
+            history: self.history.clone(),
+            context: ctx,
+        };
+    }
+}
+impl WorkableExpressionSequence {
+    pub fn new(ctx: WorksheetContext) -> WorkableExpressionSequence {
+        return WorkableExpressionSequence {
             context: ctx,
             history: vec![],
         };
@@ -140,7 +157,6 @@ impl Worksheet {
     
     pub fn set_expression_context(&mut self, expression_ctx: Context) {
         self.context.expression_context = expression_ctx;
-        self.propagate_context_update();
     }
     
     pub fn get_expression_context(&self) -> Context {
@@ -150,46 +166,45 @@ impl Worksheet {
     
     pub fn set_normalization_function(&mut self, f: NormalizationFunction) {
         self.context.normalization_function = Some(f);
-        self.propagate_context_update();
     }
     
     pub fn set_get_possible_actions_function(&mut self, f: GetPossibleActionsFunction) {
         self.context.get_possible_actions_function = Some(f);
-        self.propagate_context_update();
     }
     
     pub fn reset_rule_map(&mut self) { 
         self.context.rule_map.clear();
-        self.propagate_context_update();
     }
     pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map = rule_map;
-        self.propagate_context_update();
     }
     pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map.extend(rule_map);
-        self.propagate_context_update();
-    }
-    
-    fn propagate_context_update(&mut self) {
-        self.expression_sequences.iter_mut().for_each(|seq| seq.set_context(self.context.clone()));
     }
     
     pub fn introduce_expression(&mut self, expr: Expression) {
-        let mut sequence = ExpressionSequence::new(self.context.clone());
+        let mut sequence = WorkableExpressionSequence::new(self.context.clone());
         sequence.push(Action::Introduce, expr);
-        self.expression_sequences.push(sequence);
+        self.expression_sequences.push(sequence.into());
     }
     
-    pub fn get_expression_sequence(&self, index: usize) -> Option<&ExpressionSequence> {
-        return self.expression_sequences.get(index);
+    pub fn get_workable_expression_sequence(&self, index: usize) -> Option<WorkableExpressionSequence> {
+        return self.expression_sequences.get(index).map(|seq| seq.with_context(self.context.clone()));
     }
     
-    pub fn get_mut_expression_sequence(&mut self, index: usize) -> Option<&mut ExpressionSequence> {
-        return self.expression_sequences.get_mut(index);
+    pub fn store_expression_sequence(&mut self, index: usize, seq: WorkableExpressionSequence) {
+        if index < self.expression_sequences.len() {
+            self.expression_sequences[index] = seq.into();
+        } else {
+            self.expression_sequences.push(seq.into());
+        }
     }
     
-    pub fn get(&mut self, index: usize) -> Option<&mut ExpressionSequence> {
-        return self.get_mut_expression_sequence(index);
+    pub fn get(&mut self, index: usize) -> Option<WorkableExpressionSequence> {
+        return self.get_workable_expression_sequence(index);
     }
+    pub fn store(&mut self, index: usize, seq: WorkableExpressionSequence) {
+        self.store_expression_sequence(index, seq);
+    }
+    
 }

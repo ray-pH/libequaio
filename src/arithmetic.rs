@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::expression::{Address, Expression, ExpressionError, ExpressionType, StatementSymbols};
-use crate::worksheet::{ExpressionSequence, Action, WorksheetContext};
+use crate::worksheet::{WorkableExpressionSequence, Action, WorksheetContext};
 use super::expression as exp;
 
 #[derive(PartialEq, Clone)]
@@ -319,7 +319,7 @@ impl exp::Expression {
     }
 }
 
-impl ExpressionSequence {
+impl WorkableExpressionSequence {
     pub fn do_arithmetic_calculation_at(&mut self, addr: &Address) -> bool {
         let last_expr = self.last_expression();
         let name = format!(

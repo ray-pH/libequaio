@@ -1,5 +1,5 @@
 use crate::expression::{Address, Context, Expression, ExpressionType, ExpressionError, expression_builder as eb};
-use crate::worksheet::{Action, ExpressionSequence, WorksheetContext};
+use crate::worksheet::{Action, WorkableExpressionSequence, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
 use crate::{address, parser_prefix};
@@ -211,7 +211,7 @@ impl Expression {
     }
 }
 
-impl ExpressionSequence {
+impl WorkableExpressionSequence {
     pub fn apply_simple_arithmetic_to_both_side(&mut self, op: ArithmeticOperator, expr: &Expression) -> bool {
         let name = generate_simple_apply_arithmetic_to_both_side_name(&op, expr);
         let expr = self.last_expression().apply_simple_arithmetic_to_both_side(&op, expr);

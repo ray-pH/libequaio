@@ -33,7 +33,7 @@ mod algebra_test {
         let mut ws = init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
-        let seq0 = ws.get_mut_expression_sequence(0).unwrap();
+        let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
         let status = seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Add, &eb::constant("1"));
         assert!(status);
         let status = seq0.do_arithmetic_calculation_at(&address![1]);
@@ -85,7 +85,7 @@ mod get_possible_actions {
         let expr = parser_prefix::to_expression("=(x,/(3,-(1,x)))", &ws.get_expression_context()).unwrap();
         ws.introduce_expression(expr.clone());
         
-        let seq0 = ws.get_expression_sequence(0).unwrap();
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
         let actions = seq0.get_possible_actions(&vec![address![], address![1,1]]);
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0].0, Action::ApplyAction("Apply *(1 - x) to both side".to_string()));
@@ -108,7 +108,7 @@ mod get_possible_actions {
         let mut ws = init_algebra_worksheet(vec_strings!["x"]);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
-        let seq0 = ws.get_mut_expression_sequence(0).unwrap();
+        let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
         assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![0].sub(1)], 0));
