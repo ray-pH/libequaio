@@ -1,6 +1,6 @@
 use crate::expression::{Address, Expression, ExpressionType};
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub enum BlockType {
     #[default]
     Symbol,
@@ -9,7 +9,7 @@ pub enum BlockType {
     FractionContainer,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub struct Block {
     pub block_type: BlockType,
     pub address: Address,
