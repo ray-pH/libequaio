@@ -1,6 +1,6 @@
 use equaio::rule::{self, RuleMap};
 use equaio::worksheet::{Worksheet,Action};
-use equaio::parser_prefix;
+use equaio::parser::parser_prefix;
 use equaio::arithmetic::{self, get_arithmetic_ctx};
 use equaio::address;
 use equaio::algebra;

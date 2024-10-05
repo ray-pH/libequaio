@@ -1,7 +1,7 @@
 use equaio::expression as exp;
 use equaio::expression::Address;
 use equaio::vec_strings;
-use equaio::parser_prefix;
+use equaio::parser::parser_prefix;
 use equaio::address;
 
 fn print_matches(matches: Vec<(exp::Address,exp::MatchMap)>) {

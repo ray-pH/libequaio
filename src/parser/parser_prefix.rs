@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use super::expression::{Expression, ExpressionType, Context, StatementSymbols};
+use super::super::expression::{Expression, ExpressionType, Context, StatementSymbols};
 
 #[derive(PartialEq, Clone)]
 enum Token {

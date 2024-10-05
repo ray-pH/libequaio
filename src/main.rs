@@ -1,6 +1,6 @@
 use equaio::expression as exp;
 use equaio::vec_strings;
-use equaio::parser_prefix;
+use equaio::parser::parser_prefix;
 
 fn main() {
     let str : String = "+(0,+(x,f(2,4)))".into();

@@ -1,7 +1,7 @@
 use equaio::{address, rule};
 use equaio::expression::{Address, expression_builder as eb};
 use equaio::arithmetic;
-use equaio::parser_prefix;
+use equaio::parser::parser_prefix;
 use equaio::rule::RuleMap;
 use equaio::vec_strings;
 use equaio::algebra;

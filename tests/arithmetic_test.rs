@@ -1,4 +1,4 @@
-use equaio::parser_prefix;
+use equaio::parser::parser_prefix;
 use equaio::arithmetic;
 use equaio::expression::Address;
 use equaio::address;

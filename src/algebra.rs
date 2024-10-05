@@ -2,7 +2,7 @@ use crate::expression::{Address, Context, Expression, ExpressionType, Expression
 use crate::worksheet::{Action, WorkableExpressionSequence, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
-use crate::{address, parser_prefix};
+use crate::{address, parser::parser_prefix};
 use lazy_static::lazy_static;
 
 // this is a module for algebra (with arithmetic)
