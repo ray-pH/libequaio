@@ -1,15 +1,15 @@
 use std::str::FromStr;
 use super::super::expression::{Expression, ExpressionType, Context, StatementSymbols};
 
-#[derive(PartialEq, Clone)]
-enum Token {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Token {
     OpenParen,
     CloseParen,
     Comma,
     Symbol(String),
 }
 
-fn tokenize(s: String) -> Vec<Token> {
+pub fn tokenize(s: String, ignore_whitespace: bool) -> Vec<Token> {
     let mut tokens = Vec::new();
     let mut current_symbol = String::new();
 
@@ -34,7 +34,9 @@ fn tokenize(s: String) -> Vec<Token> {
                 tokens.push(Token::Comma);
             },
             _ if c.is_whitespace() => {
-                // ignore whitespace
+                if !ignore_whitespace {
+                    push_symbol_if_any(&mut current_symbol, &mut tokens);
+                }
             },
             _ => {
                 current_symbol.push(c);
@@ -45,11 +47,10 @@ fn tokenize(s: String) -> Vec<Token> {
     tokens
 }
 
-
 /// split the tokens by commas
 /// 1,2,f(3,4),g(f(1,2),3)
 /// -> [[1], [2], [f(3,4)], [g(f(1,2),3)]]
-fn split_tokens_by_comma(tokens: &Vec<Token>) -> Vec<Vec<Token>> {
+pub fn split_tokens_by_comma(tokens: &Vec<Token>) -> Vec<Vec<Token>> {
     let mut result  : Vec<Vec<Token>> = Vec::new();
     let mut current : Vec<Token> = Vec::new();
     let mut paren_count = 0;
@@ -74,22 +75,26 @@ fn split_tokens_by_comma(tokens: &Vec<Token>) -> Vec<Vec<Token>> {
     result
 }
 
+pub fn get_value_expression(s: &String, ctx: &Context) -> Expression {
+    let is_param   = ctx.parameters.contains(s);
+    let is_numeric = ctx.handle_numerics && s.parse::<f64>().is_ok();
+    let exp_type = if is_param || is_numeric {
+        ExpressionType::ValueConst
+    } else {
+        ExpressionType::ValueVar
+    };
+    return Expression {
+        exp_type,
+        symbol: s.clone(),
+        children: None,
+    };
+}
+
 fn tokens_to_expression(tokens: &[Token], ctx: &Context) -> Option<Expression> {
     // first token must be a symbol
     if let Token::Symbol(ref s) = tokens[0] {
         if tokens.len() == 1 {
-            let is_param   = ctx.parameters.contains(s);
-            let is_numeric = ctx.handle_numerics && s.parse::<f64>().is_ok();
-            let exp_type = if is_param || is_numeric {
-                ExpressionType::ValueConst
-            } else {
-                ExpressionType::ValueVar
-            };
-            return Some(Expression {
-                exp_type,
-                symbol: s.clone(),
-                children: None,
-            });
+            return Some(get_value_expression(s, ctx));
         }
         // must be an operator, which mean
         // the second token must be a open paren
@@ -120,5 +125,5 @@ fn tokens_to_expression(tokens: &[Token], ctx: &Context) -> Option<Expression> {
 
 pub fn to_expression<T: AsRef<str>>(text: T, ctx: &Context) -> Option<Expression> {
     let s : String = text.as_ref().to_string();
-    tokens_to_expression(&tokenize(s), ctx)
+    tokens_to_expression(&tokenize(s, true), ctx)
 }

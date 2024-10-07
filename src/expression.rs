@@ -928,6 +928,14 @@ pub mod expression_builder {
         };
     }
     
+    pub fn binary_statement(symbol: &str, left: Expression, right: Expression) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::StatementOperatorBinary,
+            symbol   : symbol.to_string(),
+            children : Some(vec![left, right]),
+        };
+    }
+    
 }
 
 // type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
