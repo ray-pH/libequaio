@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::arithmetic::get_arithmetic_ctx;
 use crate::expression::{Address, Context, Expression, ExpressionError};
-use crate::parser::parser_prefix;
+use crate::parser::{parser_prefix, parser};
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Default)]
@@ -39,10 +39,12 @@ impl From<serde_json::Error> for ParserError {
 #[derive(Serialize, Deserialize, Debug)]
 struct RulesetVariationJSON {
     expr_prefix: Option<String>,
+    expr: Option<String>
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct RulesetNormalizationJSON {
     expr_prefix: Option<String>,
+    expr: Option<String>
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct ContextJSON {
@@ -53,6 +55,7 @@ struct RuleJSON {
     id: String,
     label: Option<String>,
     expr_prefix: Option<String>,
+    expr: Option<String>,
     variations: Option<Vec<RulesetVariationJSON>>,
 }
 #[derive(Serialize, Deserialize, Debug)]
@@ -85,9 +88,15 @@ fn resolve_variations_json(
     let variations_json = variations_json.unwrap();
     let mut variations: Vec<Expression> = vec![];
     for variation_json in variations_json {
-        let expr_prefix = variation_json.expr_prefix.unwrap_or_default();
-        let expr = parser_prefix::to_expression(&expr_prefix, context)
-            .ok_or(ParserError::InvalidRule(expr_prefix))?;
+        let expr = if let Some(expr) = variation_json.expr {
+            parser::to_expression(&expr, context)
+                .ok_or(ParserError::InvalidRule(expr))
+        } else if let Some(expr_prefix) = variation_json.expr_prefix {
+            parser_prefix::to_expression(&expr_prefix, context)
+                .ok_or(ParserError::InvalidRule(expr_prefix))
+        } else {
+            Err(ParserError::InvalidRule("missing expr or expr_prefix".to_string()))
+        }?;
         variations.push(expr);
     }
     return Ok(variations);
@@ -180,19 +189,23 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
             None => ruleset_variations.clone(),
         };
         
-        if let Some(expr_prefix) = rule_json.expr_prefix {
-            let expression = parser_prefix::to_expression(&expr_prefix, &context)
-                .ok_or(ParserError::InvalidRule(expr_prefix))?;
-            let var_rules = generate_variations(&Rule {id: id.clone(), label, expression}, variations);
-            
-            if var_rules.len() == 1 {
-                let mut rule = var_rules.first().unwrap().clone();
-                rule.id.clone_from(&id);
-                rules.push(rule);
-            } else {
-                rules.extend(var_rules);
-            }
-            
+        let expression = if let Some(expr) = rule_json.expr {
+            parser::to_expression(&expr, &context)
+                .ok_or(ParserError::InvalidRule(expr))
+        } else if let Some(expr_prefix) = rule_json.expr_prefix {
+            parser_prefix::to_expression(&expr_prefix, &context)
+                .ok_or(ParserError::InvalidRule(expr_prefix))
+        } else {
+            Err(ParserError::InvalidRule("missing rule".to_string()))
+        }?;
+        
+        let var_rules = generate_variations(&Rule {id: id.clone(), label, expression}, variations);
+        if var_rules.len() == 1 {
+            let mut rule = var_rules.first().unwrap().clone();
+            rule.id.clone_from(&id);
+            rules.push(rule);
+        } else {
+            rules.extend(var_rules);
         }
     }
     

@@ -2,7 +2,7 @@ use crate::expression::{Address, Context, Expression, ExpressionType, Expression
 use crate::worksheet::{Action, WorkableExpressionSequence, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
-use crate::{address, parser::parser_prefix};
+use crate::{address, parser::parser};
 use lazy_static::lazy_static;
 
 // this is a module for algebra (with arithmetic)
@@ -10,9 +10,8 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     // because this pattern is extremely common, i think it's a good idea to hardcode it
-    // A = B => _(A) = _(B)
     static ref FUNCTION_APPLICATION_TO_BOTH_SIDE_EXPR: Expression = {
-        return parser_prefix::to_expression("=>(=(A,B),=(_(A),_(B)))", &Context::default()).unwrap();
+        return parser::to_expression("A = B => _(A) = _(B)", &Context::default()).unwrap();
     };
 }
 
