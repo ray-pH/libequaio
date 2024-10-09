@@ -635,5 +635,10 @@ mod variadic {
         let rule_eq = parser_prefix::to_expression("=(*(X,+(...(A_i))),+(...(*(X,A_i))))", &ctx).unwrap();
         let new_expr = expr.apply_equation_ltr_this_node(&rule_eq).unwrap();
         assert_eq!(new_expr.to_string(true), "((x * a) + (x * b) + (x * c) + (x * d))");
+        
+        let expr = parser_prefix::to_expression("*(x,+(a,b))", &ctx).unwrap();
+        let rule_eq = parser_prefix::to_expression("=(*(X,+(...(A_i))),+(...(*(X,A_i))))", &ctx).unwrap();
+        let new_expr = expr.apply_equation_ltr_this_node(&rule_eq).unwrap();
+        assert_eq!(new_expr.to_string(true), "((x * a) + (x * b))");
     }
 }

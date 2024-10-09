@@ -27,6 +27,7 @@ pub enum ExpressionType {
 }
 impl ExpressionType {
     pub fn variadic_string() -> String { "...".into() }
+    pub fn variadic_binary_tag_string() -> String { "_VariadicBinary".into() }
     pub fn is_variadic_str(str: &str) -> bool {
         return str == "...";
     }
@@ -454,7 +455,7 @@ impl Expression {
     }
     
     #[allow(clippy::needless_range_loop)]
-    pub fn expand_variadic(&self, n: usize, const_symbols: Option<HashSet<String>>) -> Result<Expression, ExpressionError> {
+    pub fn expand_variadic(&self, n: usize, const_symbols: Option<HashSet<String>>, is_binary_op: bool) -> Result<Expression, ExpressionError> {
         if !self.is_parent_of_variadic() { return Err(ExpressionError::NotAParentOfVariadic); }
         
         let inner_expr = self.at(&address![0,0])?;
@@ -471,8 +472,13 @@ impl Expression {
                 children[i] = children[i].substitute_symbol(symbol.clone(), new_symbol);
             }
         }
+        let exp_type = if is_binary_op && n == 2 { 
+            ExpressionType::OperatorBinary 
+        } else { 
+            ExpressionType::AssocTrain 
+        };
         return Ok(Expression {
-            exp_type: ExpressionType::AssocTrain,
+            exp_type,
             symbol: self.symbol.clone(),
             children: Some(children)
         })
@@ -675,16 +681,25 @@ impl Expression {
             // if the pattern is a variadic assoc train,
             // then expand the pattern first to have the same size as the train
             AssocTrain if pattern.is_parent_of_variadic() => {
-                // invalid if the expr is not a train
-                if !self.is_assoc_train() { return None; }
-                let children = self.children.as_ref()?;
-                let children_len = children.len();
-                let new_pattern = pattern.expand_variadic(children_len, None).ok()?;
-                let mut match_map = self.pattern_match_this_node(&new_pattern)?;
-                match_map.insert(
-                    ExpressionType::variadic_string(), 
-                    expression_builder::constant(&children_len.to_string()));
-                return Some(match_map);
+                if self.is_assoc_train() {
+                    let children = self.children.as_ref()?;
+                    let children_len = children.len();
+                    let new_pattern = pattern.expand_variadic(children_len, None, false).ok()?;
+                    let mut match_map = self.pattern_match_this_node(&new_pattern)?;
+                    match_map.insert(
+                        ExpressionType::variadic_string(), 
+                        expression_builder::constant(&children_len.to_string()));
+                    return Some(match_map);
+                } else if self.exp_type == ExpressionType::OperatorBinary {
+                    let new_pattern = pattern.expand_variadic(2, None, true).ok()?;
+                    let mut match_map = self.pattern_match_this_node(&new_pattern)?;
+                    match_map.insert(
+                        ExpressionType::variadic_string(), 
+                        expression_builder::constant(&ExpressionType::variadic_binary_tag_string()));
+                    return Some(match_map);
+                } else {
+                    return None;
+                }
             },
             // if the pattern is an operator, then it must match
             // then, pattern match each child
@@ -725,7 +740,8 @@ impl Expression {
             },
             _ if self.is_parent_of_variadic() => {
                 if let Some(n_expr) = match_map.get(&ExpressionType::variadic_string()) {
-                    let n = n_expr.symbol.parse::<usize>();
+                    let is_binary_op = n_expr.symbol == ExpressionType::variadic_binary_tag_string();
+                    let n = if is_binary_op { Ok(2) } else { n_expr.symbol.parse::<usize>() };
                     if n.is_err() { return self.clone(); }
                     let n = n.unwrap();
                     
@@ -733,9 +749,11 @@ impl Expression {
                         .filter(|(_,v)| v.is_constant())
                         .map(|(k,_)| k.clone())
                         .collect();
-                    let resolved_self = self.expand_variadic(n, Some(const_symbols));
+                    let resolved_self = self.expand_variadic(n, Some(const_symbols), is_binary_op);
                     if resolved_self.is_err() { return self.clone(); }
-                    return resolved_self.unwrap().apply_match_map(match_map);
+                    let result =  resolved_self.unwrap().apply_match_map(match_map);
+                    return result;
+                    // return resolved_self.unwrap().apply_match_map(match_map);
                 } else {
                     return self.clone();
                 }
