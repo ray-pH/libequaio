@@ -181,8 +181,39 @@ mod parsing {
         let expected = "((a * (b + c)) = ((a * b) + (a * c)))";
         let expr0 = parser_prefix::to_expression("=(*(a,+(b,c)),+(*(a,b),*(a,c)))", &ctx).unwrap();
         let expr1 = parser::to_expression("a * (b + c) = (a * b) + (a * c)", &ctx).unwrap();
-        // assert_eq!(expr0, expr1);
+        assert_eq!(expr0, expr1);
         assert_eq!(expr0.to_string(true), expected);
         assert_eq!(expr1.to_string(true), expected);
+    }
+}
+
+#[cfg(test)]
+mod variadic {
+    use super::*;
+    
+    #[test]
+    fn parse_and_string() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["x", "y"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        
+        let expr0 = parser_prefix::to_expression("+(...(A))", &ctx).unwrap();
+        let expr1 = parser::to_expression("A + ...", &ctx).unwrap();
+        assert_eq!(expr0, expr1);
+        
+        let expr0 = parser_prefix::to_expression("+(...(*(A,x)))", &ctx).unwrap();
+        let expr1 = parser::to_expression("(A * x) + ...", &ctx).unwrap();
+        assert_eq!(expr0, expr1);
+        
+        let expr0 = parser_prefix::to_expression("+(...(*(A,B)))", &ctx).unwrap();
+        let expr1 = parser::to_expression("(A * B) + ...", &ctx).unwrap();
+        assert_eq!(expr0, expr1);
+        
+        let expr0 = parser_prefix::to_expression("=(*(X,+(...(A))),+(...(*(X,A))))", &ctx).unwrap();
+        let expr1 = parser::to_expression("X * (A + ...) = (X * A) + ...", &ctx).unwrap();
+        assert_eq!(expr0, expr1);
     }
 }

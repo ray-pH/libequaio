@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use super::super::expression::{Expression, Context, StatementSymbols, expression_builder as eb};
+use super::super::expression::{Expression, ExpressionType, Context, StatementSymbols, expression_builder as eb};
 use super::parser_prefix::{Token, tokenize, get_value_expression};
 
 #[derive(Debug, Clone)]
@@ -97,6 +97,7 @@ enum SemanticSymbol {
     UnaryOp(String, Vec<SemanticSymbol>),
     BinaryOp(String),
     Nary(String, Vec<Vec<SemanticSymbol>>),
+    Variadic,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -108,6 +109,15 @@ enum SemanticParsingState {
 }
 
 
+impl SemanticSymbol {
+    pub fn value_or_variadic(s: String) -> SemanticSymbol {
+        if ExpressionType::is_variadic_str(&s) {
+            return SemanticSymbol::Variadic;
+        } else {
+            return SemanticSymbol::Value(s);
+        }
+    }
+}
 fn parse_semantic_symbol(token_items: &[TokenItem], ctx: &Context) -> Option<Vec<SemanticSymbol>> {
     let mut result: Vec<SemanticSymbol> = Vec::new();
     let mut state = SemanticParsingState::LookingForLeftElement;
@@ -138,7 +148,7 @@ fn parse_semantic_symbol(token_items: &[TokenItem], ctx: &Context) -> Option<Vec
                 let unary_symbol = temp_unary_token.unwrap().get_symbol();
                 
                 if t.is_simple_value(ctx) {
-                    let value = SemanticSymbol::Value(t.get_symbol());
+                    let value = SemanticSymbol::value_or_variadic(t.get_symbol());
                     result.push(SemanticSymbol::UnaryOp(unary_symbol, vec![value]));
                     temp_unary_token = None;
                     state = SemanticParsingState::LookingForBinaryOp;
@@ -179,7 +189,7 @@ fn parse_semantic_symbol(token_items: &[TokenItem], ctx: &Context) -> Option<Vec
                     }
                 } else {
                     // 2 + f(x)
-                    result.push(SemanticSymbol::Value(t.get_symbol()));
+                    result.push(SemanticSymbol::value_or_variadic(t.get_symbol()));
                     state = SemanticParsingState::LookingForBinaryOp;
                     continue;
                 }
@@ -252,16 +262,16 @@ fn semantic_to_expression(semantic: &[SemanticSymbol], ctx: &Context) -> Option<
                         left_expr = Some(eb::unary(op, child.unwrap()));
                         state = ExpressionParsingState::AfterValue;
                     },
-                    SemanticSymbol::BinaryOp(_) => {
-                        // invalid
-                        return None
-                    },
                     SemanticSymbol::Nary(op, params) => {
                         let children = params.iter().map(|p| semantic_to_expression(p, ctx))
                             .collect::<Option<Vec<Expression>>>();
                         children.as_ref()?;
                         left_expr = Some(eb::nary(op, children.unwrap()));
                         state = ExpressionParsingState::AfterValue;
+                    },
+                    SemanticSymbol::BinaryOp(_) | SemanticSymbol::Variadic => {
+                        // invalid
+                        return None
                     },
                 }
             },
@@ -297,6 +307,17 @@ fn semantic_to_expression(semantic: &[SemanticSymbol], ctx: &Context) -> Option<
                         children.as_ref()?;
                         Some(eb::nary(op, children.unwrap()))
                     },
+                    SemanticSymbol::Variadic => {
+                        // A + ... => +(...(A))
+                        let symbol = op_symbol.as_ref()?;
+                        if !ctx.assoc_ops.contains(symbol) { return None; }
+                        left_expr.as_ref()?;
+                        
+                        left_expr = Some(eb::unary(symbol, eb::variadic(left_expr.unwrap())));
+                        state = ExpressionParsingState::AfterValue;
+                        // early exit for variadic
+                        continue;
+                    }
                 };
                 
                 right_expr.as_ref()?;

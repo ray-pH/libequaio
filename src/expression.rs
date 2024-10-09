@@ -936,6 +936,14 @@ pub mod expression_builder {
         };
     }
     
+    pub fn variadic(child: Expression) -> Expression {
+        return Expression {
+            exp_type : ExpressionType::Variadic,
+            symbol   : ExpressionType::variadic_string(),
+            children : Some(vec![child]),
+        }
+    }
+    
 }
 
 // type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, Vec<Address>) -> Vec<(Action,Expression)>;
