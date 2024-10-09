@@ -1,4 +1,5 @@
 use std::{cmp::Ordering, collections::{HashMap, HashSet}, fmt, str::FromStr};
+use regex::Regex;
 use super::utils;
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -28,6 +29,16 @@ impl ExpressionType {
     pub fn variadic_string() -> String { "...".into() }
     pub fn is_variadic_str(str: &str) -> bool {
         return str == "...";
+    }
+    pub fn is_variadic_param_str(str: &str) -> bool {
+        // variadic param symbol must ends with "_i", "_j", "_[a-z]"
+        let re = Regex::new(r"_([a-z])$").unwrap();
+        return re.is_match(str);
+    }
+    pub fn get_variadic_param_symbol_base(str: &str) -> Option<String> {
+        let re = Regex::new(r"^(.*)_[a-z]$").unwrap();
+        let captures = re.captures(str)?;
+        return Some(captures[1].to_string());
     }
 }
 
@@ -229,6 +240,7 @@ pub enum ExpressionError {
     NotAnAssocTrain,
     NotAParentOfVariadic,
     InvalidRule,
+    InvalidVariadicParam,
 }
 
 impl Expression {
@@ -300,6 +312,11 @@ impl Expression {
         return children.iter().any(|c| c.is_contain_variable());
     }
     
+    pub fn is_variadic_param(&self) -> bool {
+        if self.exp_type != ExpressionType::ValueVar { return false; }
+        return ExpressionType::is_variadic_param_str(&self.symbol);
+    }
+    
     // pub fn is_contain_variadic(&self) -> bool {
     //     if self.exp_type == ExpressionType::Variadic { return true; }
     //     if self.children.is_none() { return false; }
@@ -364,14 +381,15 @@ impl Expression {
             },
             ExpressionType::AssocTrain if self.is_parent_of_variadic() => {
                 if let Ok(grandchild) = self.at(&address![0,0]){
-                    let variables = grandchild.collect_var(None);
-                    let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
+                    let params = grandchild.collect_variadic_param(None);
+                    let param_symbols = params.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
                     
                     let mut granchild1 = grandchild.clone();
                     let mut granchild2 = grandchild.clone();
-                    for symbol in &variable_symbols {
-                        let new_symbol1 = symbol.clone() + "_1";
-                        let new_symbol2 = symbol.clone() + "_2";
+                    for symbol in &param_symbols {
+                        let symbol_base = ExpressionType::get_variadic_param_symbol_base(symbol).unwrap_or(symbol.clone());
+                        let new_symbol1 = symbol_base.clone() + "_1";
+                        let new_symbol2 = symbol_base.clone() + "_2";
                         granchild1 = granchild1.substitute_symbol(symbol.clone(), new_symbol1);
                         granchild2 = granchild2.substitute_symbol(symbol.clone(), new_symbol2);
                     }
@@ -419,6 +437,11 @@ impl Expression {
         return Vec::default();
     }
     
+    pub fn collect_variadic_param(&self, const_symbols: Option<HashSet<String>>) -> Vec<Expression> {
+        let var = self.collect_var(const_symbols);
+        return var.iter().filter(|expr| expr.is_variadic_param()).cloned().collect();
+    }
+    
     pub fn substitute_symbol(&self, from: String, to: String) -> Expression {
         let mut new_exp = self.clone();
         if new_exp.symbol == from { new_exp.symbol.clone_from(&to); }
@@ -435,13 +458,16 @@ impl Expression {
         if !self.is_parent_of_variadic() { return Err(ExpressionError::NotAParentOfVariadic); }
         
         let inner_expr = self.at(&address![0,0])?;
-        let variables = inner_expr.collect_var(const_symbols);
-        let variable_symbols = variables.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
+        let params = inner_expr.collect_variadic_param(const_symbols);
+        let param_symbols = params.iter().map(|v| v.symbol.clone()).collect::<Vec<String>>();
         
         let mut children: Vec<_> = (0..n).map(|_| inner_expr.clone()).collect();
-        for symbol in &variable_symbols {
+        for symbol in &param_symbols {
+            let base_symbol = ExpressionType::get_variadic_param_symbol_base(symbol);
+            if base_symbol.is_none() { return Err(ExpressionError::InvalidVariadicParam); }
+            let base_symbol = base_symbol.unwrap();
             for i in 0..n {
-                let new_symbol = symbol.clone() + "_" + &(i+1).to_string();
+                let new_symbol = base_symbol.clone() + "_" + &(i+1).to_string();
                 children[i] = children[i].substitute_symbol(symbol.clone(), new_symbol);
             }
         }
