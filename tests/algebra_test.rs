@@ -1,7 +1,7 @@
 use equaio::{address, rule};
 use equaio::expression::{Address, expression_builder as eb};
 use equaio::arithmetic;
-use equaio::parser::parser_prefix;
+use equaio::parser::{parser_prefix, parser};
 use equaio::rule::RuleMap;
 use equaio::vec_strings;
 use equaio::algebra;
@@ -47,6 +47,15 @@ mod normalization {
         let normalized_expr = expr.normalize_simplify_one_and_zero(&ctx);
         let target_expr = parser_prefix::to_expression("x", &ctx).unwrap();
         assert_eq!(normalized_expr, target_expr);
+    }
+    
+    #[test]
+    fn double_minus() {
+        let ctx = arithmetic::get_arithmetic_ctx().add_params(vec_strings!["x","y"]);
+        let expr = parser::to_expression("(x - y) - y", &ctx).unwrap();
+        let normalized_expr = expr.normalize_algebra(&ctx);
+        let target_expr = parser_prefix::to_expression("+(x,-(y),-(y))", &ctx).unwrap();
+        assert_eq!(normalized_expr.to_string(true), target_expr.to_string(true));
     }
     
 }

@@ -152,8 +152,8 @@ impl exp::Expression {
         match self.identify_arithmetic_operator() {
             Some(ArithmeticOperator::Sub) => {
                 let children = self.children.as_ref().unwrap();
-                let left = children[0].clone();
-                let right = children[1].clone();
+                let left = children[0].clone().normalize_sub_to_negative();
+                let right = children[1].clone().normalize_sub_to_negative();
                 let negative_right = Expression {
                     exp_type : ExpressionType::OperatorUnary,
                     symbol   : ArithmeticOperator::Negative.to_string(),
