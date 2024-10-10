@@ -234,7 +234,7 @@ mod simple_algebra {
         let expr = expr.apply_simple_arithmetic_equation_at(&address![0].sub(2))
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((4 * x) + (3 * x)) = 6)");
-        let rule_eq = &algebra_rules.get("algebra/factor_out/0").unwrap().expression;
+        let rule_eq = &algebra_rules.get("algebra/factor_out_right").unwrap().expression;
         let expr = expr.apply_equation_at(rule_eq, &address![0])
             .unwrap().normalize_algebra(&ctx);
         assert_eq!(expr.to_string(true), "(((4 + 3) * x) = 6)");
