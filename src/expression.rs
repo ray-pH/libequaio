@@ -1009,24 +1009,52 @@ pub mod get_possible_actions {
         return possible_actions;
     }
     
+    // TODO: differentiate between associativity and commutativity
     pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &[Address]) 
     -> Vec<(Action, Expression)> 
     {
-        if addr_vec.len() <= 2 { return vec![]; }
+        if addr_vec.len() < 2 { return vec![]; }
+        let addr0 = &addr_vec[addr_vec.len()-1];
+        let addr1 = &addr_vec[addr_vec.len()-2];
+        if addr0.is_empty() || addr1.is_empty() { return vec![]; }
+        if addr0 == addr1 { return vec![]; }
+        
+        let ancestor_addr = Address::common_ancestor(addr0, addr1);
+        let ancestor_addr_len = ancestor_addr.path.len();
+        let index0 = addr0.path[ancestor_addr_len];
+        let index1 = addr1.path[ancestor_addr_len];
+        
+        let ancestor_expr = expr.at(&ancestor_addr);
+        if ancestor_expr.is_err() { return vec![]; }
+        
+        let new_expr = expr.swap_assoc_train_children_at(index0, index1, &ancestor_addr);
+        if new_expr.is_err() { return vec![]; }
+        
+        let new_expr = new_expr.unwrap();
+        return vec![(Action::ApplyAction("Reorder".to_string()), new_expr)];
+    }
+    
+    // TODO: differentiate between associativity and commutativity
+    pub fn swap_position_in_comutative_binary(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) 
+    -> Vec<(Action, Expression)> 
+    {
+        if addr_vec.len() < 2 { return vec![]; }
         let addr0 = &addr_vec[addr_vec.len()-1];
         let addr1 = &addr_vec[addr_vec.len()-2];
         if addr0.is_empty() || addr1.is_empty() { return vec![]; }
         
-        // non-empty address must have parent
-        let addr_parent0 = addr0.parent();
-        let addr_parent1 = addr1.parent();
-        if addr_parent0 != addr_parent1 { return vec![]; }
+        let ancestor_addr = Address::common_ancestor(addr0, addr1);
+        let ancestor_expr = expr.at(&ancestor_addr);
+        if ancestor_expr.is_err() { return vec![]; }
         
-        let addr_parent = addr_parent0;
-        let index0 = addr0.last();
-        let index1 = addr1.last();
+        let ancestor_expr = ancestor_expr.unwrap();
+        if ancestor_expr.exp_type != ExpressionType::OperatorBinary { return vec![]; }
+        if !context.expression_context.assoc_ops.contains(&ancestor_expr.symbol) { return vec![]; }
         
-        let new_expr = expr.swap_assoc_train_children_at(index0, index1, &addr_parent);
+        let left = ancestor_expr.children.as_ref().unwrap()[0].clone();
+        let right = ancestor_expr.children.as_ref().unwrap()[1].clone();
+        let flipped_ancestor_expr = expression_builder::binary(&ancestor_expr.symbol, right, left);
+        let new_expr = expr.replace_expression_at(flipped_ancestor_expr, &ancestor_addr);
         if new_expr.is_err() { return vec![]; }
         
         let new_expr = new_expr.unwrap();

@@ -1,6 +1,6 @@
 use equaio::rule::{self, RuleMap};
 use equaio::worksheet::{Worksheet,Action};
-use equaio::parser::parser_prefix;
+use equaio::parser::{parser_prefix,parser};
 use equaio::arithmetic::{self, get_arithmetic_ctx};
 use equaio::address;
 use equaio::algebra;
@@ -100,6 +100,52 @@ mod get_possible_actions {
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0].0, Action::ApplyAction("Apply *(1 - x) to both side".to_string()));
         assert_eq!(actions[0].1.to_string(true), "((x * (1 - x)) = ((3 / (1 - x)) * (1 - x)))");
+    }
+    
+    #[test]
+    fn swap_comutative_binary_ops() {
+        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let expr = parser::to_expression("1 + x = 3", &ws.get_expression_context()).unwrap();
+        ws.introduce_expression(expr);
+        
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        let actions = seq0.get_possible_actions(&vec![address![0,0], address![0,1]]);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "((x + 1) = 3)");
+        
+        // nested
+        let expr = parser::to_expression("(1 * x) + (x * 2) = 3", &ws.get_expression_context()).unwrap();
+        ws.introduce_expression(expr);
+        
+        let seq1 = ws.get_workable_expression_sequence(1).unwrap();
+        let actions = seq1.get_possible_actions(&vec![address![0,0,1], address![0,1,0]]);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "(((x * 2) + (1 * x)) = 3)");
+    }
+    
+    #[test]
+    fn swap_comutative_assoc_train() {
+        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let expr = parser::to_expression("1 + x + 2 + 4 = 3", &ws.get_expression_context()).unwrap();
+        ws.introduce_expression(expr);
+        
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        let actions = seq0.get_possible_actions(&vec![address![0,0], address![0,2]]);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "((2 + x + 1 + 4) = 3)");
+        
+        // nested
+        let expr = parser::to_expression("(1 * x) + (x * 2) + (5 * 6) = 3", &ws.get_expression_context()).unwrap();
+        ws.introduce_expression(expr);
+        
+        let seq1 = ws.get_workable_expression_sequence(1).unwrap();
+        let actions = seq1.get_possible_actions(&vec![address![0,1,1], address![0,2,0]]);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "(((1 * x) + (5 * 6) + (x * 2)) = 3)");
     }
     
     #[test]

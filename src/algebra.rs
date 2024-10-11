@@ -247,6 +247,8 @@ pub mod get_possible_actions {
             arithmetic::get_possible_actions::arithmetic(expr, context, addr_vec),
             expression::get_possible_actions::from_rule_map(expr, context, addr_vec),
             apply_fraction_arithmetic(expr, addr_vec),
+            expression::get_possible_actions::swap_position_in_comutative_binary(expr, context, addr_vec),
+            expression::get_possible_actions::swap_position_in_assoc_train(expr, addr_vec),
         ].into_iter().flatten().collect();
     }
     

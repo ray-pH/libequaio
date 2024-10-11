@@ -15,7 +15,7 @@ pub enum Action {
 
 #[derive(Default,Clone)]
 pub struct WorksheetContext {
-    expression_context : Context,
+    pub expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
     pub rule_map: HashMap<String, Rule>,
     get_possible_actions_function: Option<GetPossibleActionsFunction>,
