@@ -14,14 +14,16 @@ pub struct Rule {
 pub type RuleMap = HashMap<String, Rule>;
 
 impl Expression {
-    pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
-        let rule_expr = &rule.expression;
+    pub fn apply_rule_expr_at(&self, rule_expr: &Expression, addr: &Address) -> Result<Expression, ExpressionError> {
         if rule_expr.is_equation() {
             return self.apply_equation_at(rule_expr, addr);
         } else if rule_expr.is_implication() {
             return self.apply_implication(rule_expr);
         }
         return Err(ExpressionError::InvalidRule);
+    }
+    pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
+        return self.apply_rule_expr_at(&rule.expression, addr)
     }
 }
 

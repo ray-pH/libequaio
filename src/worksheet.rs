@@ -8,7 +8,7 @@ type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, &Vec<Addres
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Action {
-    Introduce,
+    Introduce(String),
     ApplyRule(String),
     ApplyAction(String),
 }
@@ -19,17 +19,18 @@ pub struct WorksheetContext {
     normalization_function: Option<NormalizationFunction>,
     pub rule_map: HashMap<String, Rule>,
     get_possible_actions_function: Option<GetPossibleActionsFunction>,
+    pub labelled_expression: Vec<(String, Expression)>
 }
 
 #[derive(Default)]
 pub struct WorkableExpressionSequence {
-    pub history: Vec<(Action, Expression)>,
+    pub history: Vec<(Action, Expression, Option<String>)>,
     context: WorksheetContext,
 }
 
 #[derive(Default)]
 pub struct ExpressionSequence {
-    pub history: Vec<(Action, Expression)>,
+    pub history: Vec<(Action, Expression, Option<String>)>,
 }
 
 #[derive(Default)]
@@ -46,7 +47,7 @@ impl fmt::Display for Action {
 impl Action {
     pub fn as_str(&self) -> &str {
         match self {
-            Action::Introduce => "Introduce",
+            Action::Introduce(str) => str,
             Action::ApplyRule(rule) => rule,
             Action::ApplyAction(action) => action,
         }
@@ -62,8 +63,11 @@ impl ExpressionSequence {
     pub fn with_context(&self, ctx: WorksheetContext) -> WorkableExpressionSequence {
         return WorkableExpressionSequence {
             history: self.history.clone(),
-            context: ctx,
+            context: ctx
         };
+    }
+    pub fn last_expression(&self) -> &Expression {
+        return &self.history.last().unwrap().1;
     }
 }
 impl WorkableExpressionSequence {
@@ -79,7 +83,7 @@ impl WorkableExpressionSequence {
     }
     
     pub fn expression(&self, index: usize) -> Option<&Expression> {
-        return self.history.get(index).map(|(_, expr)| expr);
+        return self.history.get(index).map(|(_, expr, _)| expr);
     }
     
     pub fn apply_rule_at(&mut self, rule_id: &str, addr: &Address) -> bool {
@@ -100,7 +104,7 @@ impl WorkableExpressionSequence {
     
     pub fn push(&mut self, action: Action, expr: Expression) {
         let expr = self.normalize(&expr);
-        self.history.push((action, expr));
+        self.history.push((action, expr, None));
     }
     
     pub fn try_push<T: Debug>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
@@ -125,14 +129,32 @@ impl WorkableExpressionSequence {
         }
     }
     
+    pub fn get_possible_actions_from_labelled_equations(&self, addr_vec: &[Address]) -> Vec<(Action,Expression)> {
+        if addr_vec.is_empty() { return vec![]; }
+        let addr = &addr_vec[addr_vec.len()-1];
+        let mut possible_actions = Vec::new();
+        for (label, expr) in self.context.labelled_expression.iter() {
+            if let Ok(new_expr) = self.last_expression().apply_rule_expr_at(expr, addr) {
+                let rulestr = format!("Substitute from {}", label);
+                let action = Action::ApplyRule(rulestr);
+                let normalized_expr = self.normalize(&new_expr);
+                possible_actions.push((action, normalized_expr));
+            }
+        }
+        return possible_actions;
+    }
+    
     pub fn get_possible_actions(&self, addr_vec: &Vec<Address>) -> Vec<(Action,Expression)> {
         let ctx = &self.context;
+        let mut possible_actions = Vec::new();
+        possible_actions.extend(self.get_possible_actions_from_labelled_equations(addr_vec));
         if let Some(f) = ctx.get_possible_actions_function {
-            return f(self.last_expression(), ctx, addr_vec).into_iter()
-                .map(|(action, expr)| {(action, self.normalize(&expr))}).collect();
-        } else {
-            return vec![];
+            possible_actions.extend(
+                f(self.last_expression(), ctx, addr_vec).into_iter()
+                    .map(|(action, expr)| {(action, self.normalize(&expr))})
+            );
         }
+        return possible_actions;
     }
     
     pub fn try_apply_action_by_index(&mut self, addr_vec: &Vec<Address>, index: usize) -> bool {
@@ -141,6 +163,12 @@ impl WorkableExpressionSequence {
             return true;
         } else {
             return false;
+        }
+    }
+    
+    pub fn label_expression(&mut self, label: String, index: usize) {
+        if let Some((action, expr, _)) = self.history.get(index) {
+            self.history[index] = (action.clone(), expr.clone(), Some(label))
         }
     }
     
@@ -184,8 +212,31 @@ impl Worksheet {
     
     pub fn introduce_expression(&mut self, expr: Expression) {
         let mut sequence = WorkableExpressionSequence::new(self.context.clone());
-        sequence.push(Action::Introduce, expr);
+        sequence.push(Action::Introduce("Introduce".to_string()), expr);
         self.expression_sequences.push(sequence.into());
+    }
+    
+    pub fn introduce_from_label(&mut self, label: &str) -> bool {
+        if let Some((_, expr)) = self.context.labelled_expression.iter().find(|(l, _)| l == label) {
+            let mut sequence = WorkableExpressionSequence::new(self.context.clone());
+            let action_str = format!("Introduce from {}", label);
+            sequence.push(Action::Introduce(action_str), expr.clone());
+            self.expression_sequences.push(sequence.into());
+            return true
+        } else {
+            return false;
+        }
+    }
+    
+    fn check_and_update_labelled_expr(&mut self, seq: &WorkableExpressionSequence) {
+        for (_, expr, label) in &seq.history {
+            if let Some(label) = label {
+                if self.context.labelled_expression.iter().any(|(l, e)| l == label && e == expr) {
+                    continue;
+                }
+                self.context.labelled_expression.push((label.clone(), expr.clone()));
+            }
+        }
     }
     
     pub fn get_workable_expression_sequence(&self, index: usize) -> Option<WorkableExpressionSequence> {
@@ -193,6 +244,7 @@ impl Worksheet {
     }
     
     pub fn store_expression_sequence(&mut self, index: usize, seq: WorkableExpressionSequence) {
+        self.check_and_update_labelled_expr(&seq);
         if index < self.expression_sequences.len() {
             self.expression_sequences[index] = seq.into();
         } else {
