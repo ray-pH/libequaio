@@ -4,13 +4,13 @@ use equaio::parser::{parser_prefix,parser};
 use equaio::arithmetic::{self, get_arithmetic_ctx};
 use equaio::address;
 use equaio::algebra;
-use equaio::expression::{Address, expression_builder as eb};
+use equaio::expression::{Address, expression_builder as eb, self};
 use equaio::vec_strings;
 
 fn get_algebra_rules() -> RuleMap {
     let filepath = "rules/algebra.json";
     let rulestr = std::fs::read_to_string(filepath).unwrap();
-    return rule::parse_rulemap_from_json(&rulestr).unwrap();
+    return rule::parse_rule_from_json(&rulestr).unwrap().0;
 }
 fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
     let mut ws = Worksheet::new();

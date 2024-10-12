@@ -51,6 +51,12 @@ struct RulesetNormalizationJSON {
 #[derive(Serialize, Deserialize, Debug)]
 struct ContextJSON {
     base: Option<String>,
+    parameters: Option<Vec<String>>,
+    unary_ops: Option<Vec<String>>,
+    binary_ops: Option<Vec<String>>,
+    assoc_ops: Option<Vec<String>>,
+    handle_numerics: Option<bool>,
+    flags: Option<Vec<String>>
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct RuleJSON {
@@ -70,16 +76,28 @@ struct RulesetJSON {
 }
 
 fn resolve_context_json(context_json: Option<ContextJSON>) -> Result<Context, ParserError> {
-    let ctx = match context_json {
-        Some(context_json) => {
-            let base = context_json.base.unwrap_or_default();
-            match base.as_str() {
-                "arithmetic" => get_arithmetic_ctx(),
-                _ => return Err(ParserError::InvalidRule(base)),
-            }
-        },
-        None => Context::default()
+    if context_json.is_none() { return Ok(Context::default()); }
+    let context_json = context_json.unwrap();
+    
+    let mut ctx = if let Some(base) = context_json.base {
+        match base.as_str() {
+            "arithmetic" => get_arithmetic_ctx(),
+            _ => return Err(ParserError::InvalidRule(base)),
+        }
+    } else {
+        Context::default()
     };
+    if let Some(parameters) = context_json.parameters { ctx.parameters.extend(parameters); };
+    if let Some(unary_ops) = context_json.unary_ops { ctx.unary_ops.extend(unary_ops); };
+    if let Some(binary_ops) = context_json.binary_ops { ctx.binary_ops.extend(binary_ops); };
+    if let Some(assoc_ops) = context_json.assoc_ops { ctx.assoc_ops.extend(assoc_ops); };
+    if let Some(handle_numerics) = context_json.handle_numerics { ctx.handle_numerics = handle_numerics; };
+    if let Some(flags) = context_json.flags { 
+        for flag in flags {
+            ctx.flags.insert(flag);
+        }
+    };
+    
     return Ok(ctx);
 }
 fn resolve_variations_json(
@@ -172,6 +190,11 @@ fn generate_variations(base: &Rule, variation_rules: Vec<Expression>) -> Vec<Rul
     return rules;
 }
 
+pub fn parse_context_from_json(json_string: &str) -> Result<Context, ParserError> {
+    let ruleset_json: RulesetJSON = serde_json::from_str(json_string)?;
+    return resolve_context_json(ruleset_json.context);
+}
+
 pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserError> {
     let ruleset_json: RulesetJSON = serde_json::from_str(json_string)?;
     let mut rules: Vec<Rule> = vec![];
@@ -214,8 +237,9 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
     return Ok(rules);
 }
 
-pub fn parse_rulemap_from_json(json_string: &str) -> Result<RuleMap, ParserError> {
+pub fn parse_rule_from_json(json_string: &str) -> Result<(RuleMap, Context), ParserError> {
     let rule_vec = parse_ruleset_from_json(json_string)?;
+    let ctx = parse_context_from_json(json_string)?;
     let rule_map = HashMap::from_iter(rule_vec.into_iter().map(|rule| (rule.id.clone(), rule)));
-    return Ok(rule_map);
+    return Ok((rule_map, ctx));
 }

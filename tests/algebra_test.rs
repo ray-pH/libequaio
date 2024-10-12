@@ -9,7 +9,7 @@ use equaio::algebra;
 fn get_algebra_rules() -> RuleMap {
     let filepath = "rules/algebra.json";
     let rulestr = std::fs::read_to_string(filepath).unwrap();
-    return rule::parse_rulemap_from_json(&rulestr).unwrap();
+    return rule::parse_rule_from_json(&rulestr).unwrap().0;
 }
 
 #[cfg(test)]
