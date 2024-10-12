@@ -1075,4 +1075,13 @@ pub mod get_possible_actions {
         return vec![(Action::ApplyAction("Reorder".to_string()), new_expr)];
     }
     
+    pub fn basic(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
+        return vec![
+            from_rule_map(expr, context, addr_vec),
+            swap_position_in_comutative_binary(expr, context, addr_vec),
+            swap_position_in_assoc_train(expr, addr_vec),
+            flip_equation(expr, addr_vec),
+        ].into_iter().flatten().collect();
+    }
+    
 }
