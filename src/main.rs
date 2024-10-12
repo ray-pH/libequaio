@@ -19,16 +19,16 @@ fn main() {
     }
     let rulestr = rulestr.unwrap();
     
-    let rule_vec = rule::parse_ruleset_from_json(&rulestr);
-    let ctx = rule::parse_context_from_json(&rulestr);
-    if rule_vec.is_err() || ctx.is_err() {
+    let ruleset = rule::parse_ruleset_from_json(&rulestr);
+    if ruleset.is_err() {
         println!("Error parsing rule: {}", &filepath);
         return;
     }
+    let ruleset = ruleset.unwrap();
     
-    let rule_vec = rule_vec.unwrap();
-    let ctx = ctx.unwrap();
-    
+    let rule_vec = ruleset.rule_vec;
+    let ctx = ruleset.context;
+        
     println!("Context:");
     println!("{:?}", ctx);
     for rule in rule_vec.iter() {

@@ -10,7 +10,8 @@ use equaio::vec_strings;
 fn get_algebra_rules() -> RuleMap {
     let filepath = "rules/algebra.json";
     let rulestr = std::fs::read_to_string(filepath).unwrap();
-    return rule::parse_rule_from_json(&rulestr).unwrap().0;
+    let ruleset = rule::parse_ruleset_from_json(&rulestr);
+    return ruleset.unwrap().get_rule_map();
 }
 fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
     let mut ws = Worksheet::new();
@@ -293,7 +294,9 @@ mod logic {
     fn setup_ws(variables: Vec<String>) -> Worksheet {
         let filepath = "rules/logic.json";
         let rulestr = std::fs::read_to_string(filepath).unwrap();
-        let (rulemap, mut ctx) =rule::parse_rule_from_json(&rulestr).unwrap();
+        let ruleset = rule::parse_ruleset_from_json(&rulestr).unwrap();
+        let rulemap = ruleset.get_rule_map();
+        let mut ctx = ruleset.context;
         ctx.add_params(variables);
         
         let mut ws = Worksheet::new();

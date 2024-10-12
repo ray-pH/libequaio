@@ -11,6 +11,14 @@ pub struct Rule {
     pub label: String,
 }
 
+#[derive(Clone, Default)]
+pub struct RuleSet {
+    pub name: String,
+    pub context: Context,
+    pub rule_vec: Vec<Rule>, 
+    pub rule_ids: Vec<String>, // to preserve the order of the rules
+}
+
 pub type RuleMap = HashMap<String, Rule>;
 
 impl Expression {
@@ -24,6 +32,12 @@ impl Expression {
     }
     pub fn apply_rule_at(&self, rule: &Rule, addr: &Address) -> Result<Expression, ExpressionError> {
         return self.apply_rule_expr_at(&rule.expression, addr)
+    }
+}
+
+impl RuleSet {
+    pub fn get_rule_map(&self) -> RuleMap {
+        return HashMap::from_iter(self.rule_vec.iter().map(|rule| (rule.id.clone(), rule.clone())));
     }
 }
 
@@ -213,23 +227,14 @@ fn generate_variations(base: &Rule, variation_rules: Vec<Expression>) -> Vec<Rul
     return rules;
 }
 
-pub fn parse_context_from_json(json_string: &str) -> Result<Context, ParserError> {
-    let ruleset_json: RulesetJSON = serde_json::from_str(json_string)?;
-    return resolve_context_json(ruleset_json.context);
-}
-
-pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserError> {
-    let ruleset_json: RulesetJSON = serde_json::from_str(json_string)?;
+fn parse_rule_vector(
+    rules_json: Vec<RuleJSON>,  name: String, ruleset_variations: Vec<Expression>, context: &Context
+) -> Result<Vec<Rule>, ParserError> {
     let mut rules: Vec<Rule> = vec![];
-    let name = ruleset_json.name;
-    let rules_json = ruleset_json.rules;
-    let context = resolve_context_json(ruleset_json.context)?;
-    let ruleset_variations = resolve_variations_json(ruleset_json.variations, &context)?;
-    
     for rule_json in rules_json {
         let id = format!("{}/{}", name, rule_json.id);
         let label = rule_json.label.unwrap_or_default();
-        let rule_variations = rule_json.variations.map(|v| resolve_variations_json(Some(v), &context));
+        let rule_variations = rule_json.variations.map(|v| resolve_variations_json(Some(v), context));
         
         let variations = match rule_variations {
             Some(Ok(variations)) => variations,
@@ -238,10 +243,10 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
         };
         
         let expression = if let Some(expr) = rule_json.expr {
-            parser::to_expression(&expr, &context)
+            parser::to_expression(&expr, context)
                 .ok_or(ParserError::InvalidRule(expr))
         } else if let Some(expr_prefix) = rule_json.expr_prefix {
-            parser_prefix::to_expression(&expr_prefix, &context)
+            parser_prefix::to_expression(&expr_prefix, context)
                 .ok_or(ParserError::InvalidRule(expr_prefix))
         } else {
             Err(ParserError::InvalidRule("missing rule".to_string()))
@@ -256,13 +261,17 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<Vec<Rule>, ParserErr
             rules.extend(var_rules);
         }
     }
-    
     return Ok(rules);
 }
 
-pub fn parse_rule_from_json(json_string: &str) -> Result<(RuleMap, Context), ParserError> {
-    let rule_vec = parse_ruleset_from_json(json_string)?;
-    let ctx = parse_context_from_json(json_string)?;
-    let rule_map = HashMap::from_iter(rule_vec.into_iter().map(|rule| (rule.id.clone(), rule)));
-    return Ok((rule_map, ctx));
+pub fn parse_ruleset_from_json(json_string: &str) -> Result<RuleSet, ParserError> {
+    let ruleset_json: RulesetJSON = serde_json::from_str(json_string)?;
+    
+    let name = ruleset_json.name;
+    let rules_json = ruleset_json.rules;
+    let context = resolve_context_json(ruleset_json.context)?;
+    let ruleset_variations = resolve_variations_json(ruleset_json.variations, &context)?;
+    let rule_vec = parse_rule_vector(rules_json, name.clone(), ruleset_variations, &context)?;
+    let rule_ids = rule_vec.iter().map(|rule| rule.id.clone()).collect();
+    return Ok(RuleSet {name, context, rule_vec, rule_ids});
 }

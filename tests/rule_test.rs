@@ -29,7 +29,7 @@ mod rule_test {
             ]
         }
         "#;
-        let rules = rule::parse_ruleset_from_json(str).unwrap();
+        let rules = rule::parse_ruleset_from_json(str).unwrap().rule_vec;
         
         assert_eq!(rules.len(), 2);
         assert_rule_eq(&rules[0], "simple/rule0", "", "(1 = 2)");
@@ -53,7 +53,7 @@ mod rule_test {
             ]
         }
         "#;
-        let rules = rule::parse_ruleset_from_json(str).unwrap();
+        let rules = rule::parse_ruleset_from_json(str).unwrap().rule_vec;
         assert_eq!(rules.len(), 2);
         assert_rule_eq(&rules[0], "simple/rule0/0", "", "((X + 0) = X)");
         assert_rule_eq(&rules[1], "simple/rule0/1", "", "((0 + X) = X)");
@@ -76,7 +76,7 @@ mod rule_test {
             ]
         }
         "#;
-        let rules = rule::parse_ruleset_from_json(str).unwrap();
+        let rules = rule::parse_ruleset_from_json(str).unwrap().rule_vec;
         assert_eq!(rules.len(), 2);
         assert_rule_eq(&rules[0], "simple/rule0/0", "", "((X + 0) = X)");
         assert_rule_eq(&rules[1], "simple/rule0/1", "", "((0 + X) = X)");
@@ -102,7 +102,7 @@ mod rule_test {
             ]
         }
         "#;
-        let rules = rule::parse_ruleset_from_json(str).unwrap();
+        let rules = rule::parse_ruleset_from_json(str).unwrap().rule_vec;
         assert_eq!(rules.len(), 2);
         assert_rule_eq(&rules[0], "simple/rule0/0", "", "((A * (B + C)) = ((A * B) + (A * C)))");
         assert_rule_eq(&rules[1], "simple/rule0/1", "", "(((B + C) * A) = ((A * B) + (A * C)))");
@@ -128,7 +128,7 @@ mod rule_test {
             ]
         }
         "#;
-        let rules = rule::parse_ruleset_from_json(str).unwrap();
+        let rules = rule::parse_ruleset_from_json(str).unwrap().rule_vec;
         assert_eq!(rules.len(), 2);
         assert_rule_eq(&rules[0], "simple/rule0/0", "", "((A * (B + C)) = ((A * B) + (A * C)))");
         assert_rule_eq(&rules[1], "simple/rule0/1", "", "(((B + C) * A) = ((A * B) + (A * C)))");
@@ -143,7 +143,7 @@ mod from_file {
     fn algebra() {
         let filepath = "rules/algebra.json";
         let rulestr = std::fs::read_to_string(filepath).unwrap();
-        let rules = rule::parse_ruleset_from_json(&rulestr).unwrap();
+        let rules = rule::parse_ruleset_from_json(&rulestr).unwrap().rule_vec;
         assert_eq!(rules.len(), 18);
         let rule_descriptions = vec![
             ("algebra/add_zero/0", "Addition with 0", "((X + 0) = X)"),
