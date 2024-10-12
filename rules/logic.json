@@ -1,0 +1,102 @@
+{
+    "name": "logic",
+    "context": {
+        "parameters": ["1", "0"],
+        "unary_ops": ["~"],
+        "binary_ops": ["&", "|"],
+        "assoc_ops": ["&", "|"]
+    },
+    "variations": [
+        {"expr":  "P & Q = Q & P"},
+        {"expr":  "P | Q = Q | P"}
+    ],
+    "rules": [
+        {
+            "id": "identity_and",
+            "expr": "P & 1 = P",
+            "label": "Identity (AND)"
+        },
+        {
+            "id": "identity_or",
+            "expr": "P | 0 = P",
+            "label": "Identity (OR)"
+        },
+        {
+            "id": "idempotent_and",
+            "expr": "P & P = P",
+            "label": "Idempotent (AND)"
+        },
+        {
+            "id": "idempotent_or",
+            "expr": "P | P = P",
+            "label": "Idempotent (OR)"
+        },
+        {
+            "id": "domination_and",
+            "expr": "P & 0 = 0",
+            "label": "Domination (AND)"
+        },
+        {
+            "id": "domination_or",
+            "expr": "P | 1 = 1",
+            "label": "Domination (OR)"
+        },
+        {
+            "id": "double_negation",
+            "expr": "~(~P) = P",
+            "label": "Double Negation"
+        },
+        {
+            "id": "complement_and",
+            "expr": "P & ~P = 0",
+            "label": "Complement (AND)"
+        },
+        {
+            "id": "complement_or",
+            "expr": "P | ~P = 1",
+            "label": "Complement (OR)"
+        },
+        {
+            "id": "distributivity_and",
+            "expr": "P & (Q | R) = (P & Q) | (P & R)",
+            "label": "Distributivity (AND)"
+        },
+        {
+            "id": "distributivity_or",
+            "expr": "P | (Q & R) = (P | Q) & (P | R)",
+            "label": "Distributivity (OR)"
+        },
+        {
+            "id": "factor_out_and",
+            "expr": "(P & Q) | (P & R) = P & (Q | R)",
+            "label": "Factoring Out (AND)"
+        },
+        {
+            "id": "factor_out_or",
+            "expr": "(P | Q) & (P | R) = P | (Q & R)",
+            "label": "Factoring Out (OR)"
+        },
+        {
+            "id": "de_morgan_and",
+            "expr": "~(P & Q) = ~P | ~Q",
+            "label": "De Morgan's Law (AND)",
+            "variations": []
+        },
+        {
+            "id": "de_morgan_or",
+            "expr": "~(P | Q) = ~P & ~Q",
+            "label": "De Morgan's Law (OR)",
+            "variations": []
+        },
+        {
+            "id": "absorption_and",
+            "expr": "P & (P | Q) = P",
+            "label": "Absorption (AND)"
+        },
+        {
+            "id": "absorption_or",
+            "expr": "P | (P & Q) = P",
+            "label": "Absorption (OR)"
+        }
+    ]
+}

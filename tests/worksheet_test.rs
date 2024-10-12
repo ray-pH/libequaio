@@ -285,3 +285,58 @@ mod multiple_equation {
     }
     
 }
+
+#[cfg(test)]
+mod logic {
+    use super::*;
+    
+    fn setup_ws(variables: Vec<String>) -> Worksheet {
+        let filepath = "rules/logic.json";
+        let rulestr = std::fs::read_to_string(filepath).unwrap();
+        let (rulemap, mut ctx) =rule::parse_rule_from_json(&rulestr).unwrap();
+        ctx.add_params(variables);
+        
+        let mut ws = Worksheet::new();
+        ws.set_expression_context(ctx);
+        ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
+        ws.set_rule_map(rulemap);
+        ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
+            expression::get_possible_actions::basic(expr,ctx,addr_vec));
+        return ws;
+    }
+    
+    fn seq_eq(seq: &WorkableExpressionSequence, target: &[(&str, &str, &str)]) {
+        assert_eq!(seq.history.len(), target.len());
+        for (i, (target_action_str, target_expr_str, target_label_str)) in target.iter().enumerate() {
+            let (action, expr, label) = seq.history.get(i).unwrap();
+            if !target_action_str.is_empty() {
+                assert_eq!(action.to_string(), target_action_str.to_string());
+            }
+            if !target_label_str.is_empty() {
+                assert_eq!(label.clone().unwrap(), target_label_str.to_string());
+            } else {
+                assert!(label.is_none());
+            }
+            assert_eq!(expr.to_string(true), target_expr_str.to_string());
+        }
+    }
+    
+    #[test]
+    fn simplification() {
+        // (~A | B) & (A | B) = B
+        let mut ws = setup_ws(vec_strings!["A","B"]);
+        ws.introduce_expression(parser::to_expression("(~A | B) & (A | B)", &ws.get_expression_context()).unwrap());
+        
+        let mut seq = ws.get_workable_expression_sequence(0).unwrap();
+        assert!(seq.apply_rule_at("logic/factor_out_or/3", &address![]));
+        assert!(seq.try_apply_action_by_index(&vec![address![1]], 0));
+        assert!(seq.try_apply_action_by_index(&vec![address![]], 0));
+        let target = [
+            ("Introduce", "(((~A) | B) & (A | B))", ""),
+            ("Factoring Out (OR)", "(B | ((~A) & A))", ""),
+            ("Complement (AND)", "(B | 0)", ""),
+            ("Identity (OR)", "B", ""),
+        ];
+        seq_eq(&seq, &target);
+    }
+}

@@ -168,6 +168,28 @@ fn generate_variations_from_single_rule(base_expr: &Expression, variation_rule: 
     return variations;
 }
 
+fn filter_for_unique_variations(expr_variations: &[Expression]) -> Vec<Expression> {
+    if expr_variations.len() <= 2 { return expr_variations.to_vec(); }
+    if !expr_variations[0].is_equation() { return expr_variations.to_vec(); }
+    
+    let mut unique_variations = Vec::new();
+    for i in 0..expr_variations.len() {
+        let expr1 = &expr_variations[i];
+        let mut is_unique = true;
+        for expr2 in expr_variations.iter().skip(i+1) {
+            //NOTE: only check the equivalence of the lhs
+            if let (Some(expr1_lhs), Some(expr2_lhs)) = (expr1.lhs(), expr2.lhs()) {
+                if expr1_lhs.is_equivalent_to(expr2_lhs) {
+                    is_unique = false;
+                    break;
+                }
+            }
+        }
+        if is_unique { unique_variations.push(expr1.clone()); }
+    }
+    return unique_variations;
+}
+
 // C*(A+B)
 fn generate_variations(base: &Rule, variation_rules: Vec<Expression>) -> Vec<Rule> {
     let mut expr_variations: Vec<Expression> = vec![base.expression.clone()];
@@ -179,6 +201,7 @@ fn generate_variations(base: &Rule, variation_rules: Vec<Expression>) -> Vec<Rul
         }
         expr_variations = new_expr_variations;
     }
+    let expr_variations = filter_for_unique_variations(&expr_variations);
     // the id of the rule is base.id + index
     let rules = expr_variations.iter().enumerate().map(|(i, expr)| {
         Rule {
