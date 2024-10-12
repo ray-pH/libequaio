@@ -144,7 +144,7 @@ mod from_file {
         let filepath = "rules/algebra.json";
         let rulestr = std::fs::read_to_string(filepath).unwrap();
         let rules = rule::parse_ruleset_from_json(&rulestr).unwrap();
-        assert_eq!(rules.len(), 16);
+        assert_eq!(rules.len(), 18);
         let rule_descriptions = vec![
             ("algebra/add_zero/0", "Addition with 0", "((X + 0) = X)"),
             ("algebra/add_zero/1", "Addition with 0", "((0 + X) = X)"),
@@ -157,6 +157,8 @@ mod from_file {
             ("algebra/sub_self", "Self subtraction", "((X - X) = 0)"),
             ("algebra/add_negative_self/0", "Self subtraction", "((X + (-X)) = 0)"),
             ( "algebra/add_negative_self/1", "Self subtraction", "(((-X) + X) = 0)"),
+            ( "algebra/factor_out_minus_right", "Factor out the minus sign", "((X * (-Y)) = (-(X * Y)))"),
+            ( "algebra/factor_out_minus_left", "Factor out the minus sign", "(((-X) * Y) = (-(X * Y)))"),
             ( "algebra/add_self", "Self addition", "((X + X) = (2 * X))"),
             ( "algebra/distribution/0", "Distribution", "((X * (A_1 + A_2 + ...)) = ((X * A_1) + (X * A_2) + ...))"),
             ( "algebra/distribution/1", "Distribution", "(((A_1 + A_2 + ...) * X) = ((X * A_1) + (X * A_2) + ...))"),

@@ -48,6 +48,18 @@
             "label": "Self subtraction"
         },
         {
+            "id": "factor_out_minus_right",
+            "expr": "X * (-Y) = -(X * Y)",
+            "label": "Factor out the minus sign",
+            "variations": []
+        },
+        {
+            "id": "factor_out_minus_left",
+            "expr": "(-X) * Y = -(X * Y)",
+            "label": "Factor out the minus sign",
+            "variations": []
+        },
+        {
             "id": "add_self",
             "expr": "X + X = 2 * X",
             "label": "Self addition"
