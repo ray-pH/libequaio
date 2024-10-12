@@ -1,28 +1,39 @@
-use equaio::expression as exp;
-use equaio::vec_strings;
-use equaio::parser::parser_prefix;
+use std::env;
+use equaio::rule;
 
 fn main() {
-    let str : String = "+(0,+(x,f(2,4)))".into();
-    let ctx = exp::Context {
-        parameters: vec_strings!["x", "y"],
-        unary_ops: vec_strings!["+", "-"],
-        binary_ops: vec_strings!["+", "-", "*", "/"],
-        assoc_ops: vec_strings!["+", "*"],
-        handle_numerics: true,
-        ..Default::default()
-    };
-    let expr = parser_prefix::to_expression(str, &ctx).unwrap();
-    println!("{}", expr.to_string(true));
-
-    // let pattren = parser_prefix::to_expression("+(A,f(B,C))".into(), &ctx).unwrap();
-    let pattern = parser_prefix::to_expression("+(A,B)", &ctx).unwrap();
-    let matches = expr.get_pattern_matches(&pattern);
-    for (address, map) in matches {
-        println!("Match at address {:?}:{:?}", address.path, address.sub);
-        for (k,v) in map {
-            println!("{} -> {}", k, v.to_string(true));
-        }
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: {} rulename", args[0]);
+        return;
+    }
+    
+    let rulename = &args[1];
+    println!("Rulename: {}", rulename);
+    
+    let filepath = format!("rules/{}.json", rulename);
+    let rulestr = std::fs::read_to_string(&filepath);
+    if rulestr.is_err() {
+        println!("Error reading file: {}", &filepath);
+        return;
+    }
+    let rulestr = rulestr.unwrap();
+    
+    let rule_vec = rule::parse_ruleset_from_json(&rulestr);
+    let ctx = rule::parse_context_from_json(&rulestr);
+    if rule_vec.is_err() || ctx.is_err() {
+        println!("Error parsing rule: {}", &filepath);
+        return;
+    }
+    
+    let rule_vec = rule_vec.unwrap();
+    let ctx = ctx.unwrap();
+    
+    println!("Context:");
+    println!("{:?}", ctx);
+    for rule in rule_vec.iter() {
         println!();
+        println!("{} ({})", rule.id, rule.label);
+        println!("    {}", rule.expression.to_string(true));
     }
 }
