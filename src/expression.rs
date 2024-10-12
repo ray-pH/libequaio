@@ -1009,6 +1009,20 @@ pub mod get_possible_actions {
         return possible_actions;
     }
     
+    pub fn flip_equation(expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
+        if addr_vec.is_empty() { return vec![]; }
+        let addr = &addr_vec[addr_vec.len()-1];
+        
+        let expr = expr.at(addr);
+        if expr.is_err() { return vec![]; }
+        
+        let expr = expr.unwrap();
+        if !expr.is_equation() { return vec![]; }
+        
+        let flipped_expr = expr.flip_equation();
+        return vec![(Action::ApplyAction("Flip the equation".to_string()), flipped_expr)];
+    }
+    
     // TODO: differentiate between associativity and commutativity
     pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &[Address]) 
     -> Vec<(Action, Expression)> 

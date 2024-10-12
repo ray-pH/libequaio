@@ -249,6 +249,7 @@ pub mod get_possible_actions {
             apply_fraction_arithmetic(expr, addr_vec),
             expression::get_possible_actions::swap_position_in_comutative_binary(expr, context, addr_vec),
             expression::get_possible_actions::swap_position_in_assoc_train(expr, addr_vec),
+            expression::get_possible_actions::flip_equation(expr, addr_vec),
         ].into_iter().flatten().collect();
     }
     
