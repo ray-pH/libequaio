@@ -126,7 +126,7 @@ fn parse_semantic_symbol(token_items: &[TokenItem], ctx: &Context) -> Option<Vec
     
     let mut iter = token_items.iter().peekable();
     while let Some(t) = iter.next() {
-        dbg!(&result);
+        // dbg!(&result);
         match state {
             SemanticParsingState::LookingForNaryParameter => {
                 if let TokenItem::Group(group) = t {
@@ -346,12 +346,12 @@ fn semantic_to_expression(semantic: &[SemanticSymbol], ctx: &Context) -> Option<
 pub fn to_expression_raw<T: AsRef<str>>(text: T, ctx: &Context) -> Option<Expression> {
     let s : String = text.as_ref().to_string();
     let tokens = tokenize(s, false);
-    dbg!(&tokens);
+    // dbg!(&tokens);
     let token_items = group_tokens_by_parentheses(&tokens);
-    dbg!(&token_items);
+    // dbg!(&token_items);
     if let TokenItem::Group(group) = &token_items {
         let semantic = parse_semantic_symbol(group, ctx);
-        dbg!(&semantic);
+        // dbg!(&semantic);
         if let Some(semantic) = semantic {
             return semantic_to_expression(&semantic, ctx);
         }
@@ -392,7 +392,7 @@ fn preprocess_unary<T: AsRef<str>>(text: T, ctx: &Context) -> String {
 pub fn to_expression<T: AsRef<str>>(text: T, ctx: &Context) -> Option<Expression> {
     let preprocessed = preprocess_statement(text);
     let preprocessed = preprocess_unary(preprocessed, ctx);
-    dbg!(&preprocessed);
+    // dbg!(&preprocessed);
     let expr = to_expression_raw(preprocessed, ctx)?;
     let result = expr.normalize_to_assoc_train(&ctx.assoc_ops)
         .normalize_two_children_assoc_train_to_binary_op(&ctx.assoc_ops);
