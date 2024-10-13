@@ -1035,8 +1035,12 @@ pub mod get_possible_actions {
         
         let ancestor_addr = Address::common_ancestor(addr0, addr1);
         let ancestor_addr_len = ancestor_addr.path.len();
-        let index0 = addr0.path[ancestor_addr_len];
-        let index1 = addr1.path[ancestor_addr_len];
+        let index0 = addr0.path.get(ancestor_addr_len);
+        let index1 = addr1.path.get(ancestor_addr_len);
+        
+        if index0.is_none() || index1.is_none() { return vec![]; }
+        let index0 = *index0.unwrap();
+        let index1 = *index1.unwrap();
         
         let ancestor_expr = expr.at(&ancestor_addr);
         if ancestor_expr.is_err() { return vec![]; }
