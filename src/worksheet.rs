@@ -22,15 +22,22 @@ pub struct WorksheetContext {
     pub labelled_expression: Vec<(String, Expression)>
 }
 
+#[derive(Clone)]
+pub struct ExpressionLine {
+    pub action: Action,
+    pub expr: Expression,
+    pub label: Option<String>,
+}
+
 #[derive(Default)]
 pub struct WorkableExpressionSequence {
-    pub history: Vec<(Action, Expression, Option<String>)>,
+    pub history: Vec<ExpressionLine>,
     context: WorksheetContext,
 }
 
 #[derive(Default)]
 pub struct ExpressionSequence {
-    pub history: Vec<(Action, Expression, Option<String>)>,
+    pub history: Vec<ExpressionLine>,
 }
 
 #[derive(Default)]
@@ -67,7 +74,7 @@ impl ExpressionSequence {
         };
     }
     pub fn last_expression(&self) -> &Expression {
-        return &self.history.last().unwrap().1;
+        return &self.history.last().unwrap().expr;
     }
 }
 impl WorkableExpressionSequence {
@@ -83,7 +90,7 @@ impl WorkableExpressionSequence {
     }
     
     pub fn expression(&self, index: usize) -> Option<&Expression> {
-        return self.history.get(index).map(|(_, expr, _)| expr);
+        return self.history.get(index).map(|line| &line.expr);
     }
     
     pub fn apply_rule_at(&mut self, rule_id: &str, addr: &Address) -> bool {
@@ -99,12 +106,12 @@ impl WorkableExpressionSequence {
     }
     
     pub fn last_expression(&self) -> &Expression {
-        return &self.history.last().unwrap().1;
+        return &self.history.last().unwrap().expr;
     }
     
     pub fn push(&mut self, action: Action, expr: Expression) {
         let expr = self.normalize(&expr);
-        self.history.push((action, expr, None));
+        self.history.push(ExpressionLine{action, expr, label: None});
     }
     
     pub fn try_push<T: Debug>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
@@ -167,8 +174,8 @@ impl WorkableExpressionSequence {
     }
     
     pub fn label_expression(&mut self, label: String, index: usize) {
-        if let Some((action, expr, _)) = self.history.get(index) {
-            self.history[index] = (action.clone(), expr.clone(), Some(label))
+        if let Some(line) = self.history.get_mut(index) {
+            line.label = Some(label);
         }
     }
     
@@ -229,12 +236,12 @@ impl Worksheet {
     }
     
     fn check_and_update_labelled_expr(&mut self, seq: &WorkableExpressionSequence) {
-        for (_, expr, label) in &seq.history {
-            if let Some(label) = label {
-                if self.context.labelled_expression.iter().any(|(l, e)| l == label && e == expr) {
+        for line in &seq.history {
+            if let Some(label) = &line.label {
+                if self.context.labelled_expression.iter().any(|(l, e)| l == label && e == &line.expr) {
                     continue;
                 }
-                self.context.labelled_expression.push((label.clone(), expr.clone()));
+                self.context.labelled_expression.push((label.clone(), line.expr.clone()));
             }
         }
     }

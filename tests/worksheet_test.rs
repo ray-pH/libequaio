@@ -68,9 +68,9 @@ mod algebra_test {
         ];
         assert_eq!(seq0.history.len(), target.len());
         for (i, (target_action_str, target_expr_str)) in target.iter().enumerate() {
-            let (action, expr, _) = seq0.history.get(i).unwrap();
-            assert_eq!(action.to_string(), target_action_str.to_string());
-            assert_eq!(expr.to_string(true), target_expr_str.to_string());
+            let line = seq0.history.get(i).unwrap();
+            assert_eq!(line.action.to_string(), target_action_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
         }
     }
 }
@@ -180,9 +180,9 @@ mod get_possible_actions {
         ];
         assert_eq!(seq0.history.len(), target.len());
         for (i, (target_action_str, target_expr_str)) in target.iter().enumerate() {
-            let (action, expr, _) = seq0.history.get(i).unwrap();
-            assert_eq!(action.to_string(), target_action_str.to_string());
-            assert_eq!(expr.to_string(true), target_expr_str.to_string());
+            let line = seq0.history.get(i).unwrap();
+            assert_eq!(line.action.to_string(), target_action_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
         }
     }
 }
@@ -194,16 +194,16 @@ mod multiple_equation {
     fn seq_eq(seq: &WorkableExpressionSequence, target: &[(&str, &str, &str)]) {
         assert_eq!(seq.history.len(), target.len());
         for (i, (target_action_str, target_expr_str, target_label_str)) in target.iter().enumerate() {
-            let (action, expr, label) = seq.history.get(i).unwrap();
+            let line = seq.history.get(i).unwrap();
             if !target_action_str.is_empty() {
-                assert_eq!(action.to_string(), target_action_str.to_string());
+                assert_eq!(line.action.to_string(), target_action_str.to_string());
             }
             if !target_label_str.is_empty() {
-                assert_eq!(label.clone().unwrap(), target_label_str.to_string());
+                assert_eq!(line.label.clone().unwrap(), target_label_str.to_string());
             } else {
-                assert!(label.is_none());
+                assert!(line.label.is_none());
             }
-            assert_eq!(expr.to_string(true), target_expr_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
         }
     }
     
@@ -311,16 +311,16 @@ mod logic {
     fn seq_eq(seq: &WorkableExpressionSequence, target: &[(&str, &str, &str)]) {
         assert_eq!(seq.history.len(), target.len());
         for (i, (target_action_str, target_expr_str, target_label_str)) in target.iter().enumerate() {
-            let (action, expr, label) = seq.history.get(i).unwrap();
+            let line = seq.history.get(i).unwrap();
             if !target_action_str.is_empty() {
-                assert_eq!(action.to_string(), target_action_str.to_string());
+                assert_eq!(line.action.to_string(), target_action_str.to_string());
             }
             if !target_label_str.is_empty() {
-                assert_eq!(label.clone().unwrap(), target_label_str.to_string());
+                assert_eq!(line.label.clone().unwrap(), target_label_str.to_string());
             } else {
-                assert!(label.is_none());
+                assert!(line.label.is_none());
             }
-            assert_eq!(expr.to_string(true), target_expr_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
         }
     }
     
