@@ -1,4 +1,4 @@
-use equaio::rule::{self, RuleMap};
+use equaio::rule::{self, RuleSet};
 use equaio::worksheet::{Worksheet,Action,WorkableExpressionSequence};
 use equaio::parser::{parser_prefix,parser};
 use equaio::arithmetic::{self, get_arithmetic_ctx};
@@ -7,18 +7,20 @@ use equaio::algebra;
 use equaio::expression::{Address, expression_builder as eb, self};
 use equaio::vec_strings;
 
-fn get_algebra_rules() -> RuleMap {
-    let filepath = "rules/algebra.json";
+fn get_algebra_ruleset(auto_simplify: bool) -> RuleSet {
+    let filepath = if auto_simplify { "rules/algebra_simplify.json" } else { "rules/algebra.json" };
     let rulestr = std::fs::read_to_string(filepath).unwrap();
     let ruleset = rule::parse_ruleset_from_json(&rulestr);
-    return ruleset.unwrap().get_rule_map();
+    return ruleset.unwrap();
 }
-fn init_algebra_worksheet(variables: Vec<String>) -> Worksheet {
+fn init_algebra_worksheet(variables: Vec<String>, auto_simplify: bool) -> Worksheet {
     let mut ws = Worksheet::new();
+    let ruleset = get_algebra_ruleset(auto_simplify);
     let ctx = get_arithmetic_ctx().add_params(variables);
     ws.set_expression_context(ctx);
     ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-    ws.set_rule_map(get_algebra_rules());
+    ws.set_rule_map(ruleset.get_rule_map());
+    ws.set_auto_rule_ids(ruleset.auto_rule_ids);
     ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
         algebra::get_possible_actions::algebra(expr,ctx,addr_vec));
     return ws;
@@ -31,7 +33,7 @@ mod algebra_test {
     #[test]
     fn simple() {
         // solve 2*x - 1 = 3
-        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
         let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
@@ -73,6 +75,40 @@ mod algebra_test {
             assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
         }
     }
+    
+    #[test]
+    fn simple_auto() {
+        // solve 2*x - 1 = 3
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], true);
+        ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
+        
+        let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        assert!(seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Add, &eb::constant("1")));
+        assert!(seq0.do_arithmetic_calculation_at(&address![1]));
+        assert!(seq0.apply_simple_arithmetic_to_both_side(arithmetic::ArithmeticOperator::Div, &eb::constant("2")));
+        assert!(seq0.do_arithmetic_calculation_at(&address![1]));
+        assert!(seq0.apply_fraction_arithmetic_at(0,0, &address![0]));
+        
+        let target = [
+            ("Introduce", "(((2 * x) - 1) = 3)", false),
+            ("Apply +1 to both side", "(((2 * x) + (-1) + 1) = (3 + 1))", false),
+            ("Self subtraction", "(((2 * x) + 0) = (3 + 1))", true),
+            ("Addition with 0", "((2 * x) = (3 + 1))", true),
+            ("Calculate 3 + 1 = 4", "((2 * x) = 4)", false),
+            ("Apply /2 to both side", "(((2 * x) / 2) = (4 / 2))", false),
+            ("Calculate 4 / 2 = 2", "(((2 * x) / 2) = 2)", false),
+            ("Simplify fraction", "(((1 * x) / 1) = 2)", false),
+            ("Multiplication with 1", "((x / 1) = 2)", true),
+            ("Division by 1", "(x = 2)", true),
+        ];
+        assert_eq!(seq0.history.len(), target.len());
+        for (i, (target_action_str, target_expr_str, target_is_auto)) in target.iter().enumerate() {
+            let line = seq0.history.get(i).unwrap();
+            assert_eq!(line.action.to_string(), target_action_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
+            assert_eq!(line.is_auto_generated, *target_is_auto);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -82,7 +118,7 @@ mod get_possible_actions {
     #[test]
     fn arithmetic_both_side_given_inner() {
         // x = 3 / (1-x)
-        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
         let expr = parser_prefix::to_expression("=(x,/(3,-(1,x)))", &ws.get_expression_context()).unwrap();
         ws.introduce_expression(expr.clone());
         
@@ -105,7 +141,7 @@ mod get_possible_actions {
     
     #[test]
     fn swap_comutative_binary_ops() {
-        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
         let expr = parser::to_expression("1 + x = 3", &ws.get_expression_context()).unwrap();
         ws.introduce_expression(expr);
         
@@ -128,7 +164,7 @@ mod get_possible_actions {
     
     #[test]
     fn swap_comutative_assoc_train() {
-        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
         let expr = parser::to_expression("1 + x + 2 + 4 = 3", &ws.get_expression_context()).unwrap();
         ws.introduce_expression(expr);
         
@@ -152,7 +188,7 @@ mod get_possible_actions {
     #[test]
     fn simple() {
         // solve 2*x - 1 = 3
-        let mut ws = init_algebra_worksheet(vec_strings!["x"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
         ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
         
         let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
@@ -213,7 +249,7 @@ mod multiple_equation {
         // x + y = 3
         // x - y = 1
         
-        let mut ws = init_algebra_worksheet(vec_strings!["x","y"]);
+        let mut ws = init_algebra_worksheet(vec_strings!["x","y"], false);
         ws.introduce_expression(parser::to_expression("x + y = 3", &ws.get_expression_context()).unwrap());
         ws.introduce_expression(parser::to_expression("x - y = 1", &ws.get_expression_context()).unwrap());
         

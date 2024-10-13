@@ -6,6 +6,8 @@ use super::expression::{Context, Expression};
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
 type GetPossibleActionsFunction = fn(&Expression, &WorksheetContext, &Vec<Address>) -> Vec<(Action,Expression)>;
 
+const LIMIT_OF_AUTO_GENERATED_STEPS: usize = 100;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Action {
     Introduce(String),
@@ -19,7 +21,8 @@ pub struct WorksheetContext {
     normalization_function: Option<NormalizationFunction>,
     pub rule_map: HashMap<String, Rule>,
     get_possible_actions_function: Option<GetPossibleActionsFunction>,
-    pub labelled_expression: Vec<(String, Expression)>
+    pub labelled_expression: Vec<(String, Expression)>,
+    pub auto_rule_ids: Vec<String>, // list of rules that needs to be automatically applied
 }
 
 #[derive(Clone)]
@@ -27,6 +30,7 @@ pub struct ExpressionLine {
     pub action: Action,
     pub expr: Expression,
     pub label: Option<String>,
+    pub is_auto_generated: bool,
 }
 
 #[derive(Default)]
@@ -111,7 +115,12 @@ impl WorkableExpressionSequence {
     
     pub fn push(&mut self, action: Action, expr: Expression) {
         let expr = self.normalize(&expr);
-        self.history.push(ExpressionLine{action, expr, label: None});
+        self.history.push(ExpressionLine{action, expr, label: None, is_auto_generated: false});
+        self.try_apply_auto_rules();
+    }
+    fn push_auto(&mut self, action: Action, expr: Expression) {
+        let expr = self.normalize(&expr);
+        self.history.push(ExpressionLine{action, expr, label: None, is_auto_generated: true});
     }
     
     pub fn try_push<T: Debug>(&mut self, action: Action, expr: Result<Expression,T>) -> bool {
@@ -179,6 +188,34 @@ impl WorkableExpressionSequence {
         }
     }
     
+    pub fn try_apply_auto_rules(&mut self) {
+        if self.context.auto_rule_ids.is_empty() { return; }
+        let rule_map = &self.context.rule_map;
+        let auto_rules = self.context.auto_rule_ids.iter()
+            .filter_map(|id| rule_map.get(id)).cloned().collect::<Vec<Rule>>();
+        for _ in 0..LIMIT_OF_AUTO_GENERATED_STEPS {
+            let changed = self.f_try_apply_auto_rules(&auto_rules);
+            if !changed { break; }
+        }
+    }
+    
+    /// return `true` if the expression is changed
+    fn f_try_apply_auto_rules(&mut self, rules: &[Rule]) -> bool {
+        let expr = self.last_expression();
+        for rule in rules {
+            let rule_expr = &rule.expression;
+            let possible_eq_addr = expr.get_possible_equation_application_addresses(rule_expr);
+            if possible_eq_addr.is_empty() { continue; }
+            let addr = possible_eq_addr.first()
+                .expect("Expression::get_possible_equation_application_address is valid");
+            if let Ok(new_expr) = expr.apply_equation_at(rule_expr, addr) {
+                let action = Action::ApplyRule(rule.label.clone());
+                self.push_auto(action, new_expr);
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 impl Worksheet {
@@ -212,6 +249,9 @@ impl Worksheet {
     }
     pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map = rule_map;
+    }
+    pub fn set_auto_rule_ids(&mut self, rule_ids: Vec<String>) { 
+        self.context.auto_rule_ids = rule_ids;
     }
     pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map.extend(rule_map);

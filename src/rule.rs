@@ -17,6 +17,7 @@ pub struct RuleSet {
     pub context: Context,
     pub rule_vec: Vec<Rule>, 
     pub rule_ids: Vec<String>, // to preserve the order of the rules
+    pub auto_rule_ids: Vec<String>, // list of rules that needs to be automatically applied
 }
 
 pub type RuleMap = HashMap<String, Rule>;
@@ -79,6 +80,7 @@ struct RuleJSON {
     expr_prefix: Option<String>,
     expr: Option<String>,
     variations: Option<Vec<RulesetVariationJSON>>,
+    auto: Option<bool>,
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct RulesetJSON {
@@ -229,12 +231,14 @@ fn generate_variations(base: &Rule, variation_rules: Vec<Expression>) -> Vec<Rul
 
 fn parse_rule_vector(
     rules_json: Vec<RuleJSON>,  name: String, ruleset_variations: Vec<Expression>, context: &Context
-) -> Result<Vec<Rule>, ParserError> {
+) -> Result<(Vec<Rule>, Vec<String>), ParserError> {
     let mut rules: Vec<Rule> = vec![];
+    let mut auto_rule_ids: Vec<String> = vec![];
     for rule_json in rules_json {
         let id = format!("{}/{}", name, rule_json.id);
         let label = rule_json.label.unwrap_or_default();
         let rule_variations = rule_json.variations.map(|v| resolve_variations_json(Some(v), context));
+        let auto = rule_json.auto.unwrap_or(false);
         
         let variations = match rule_variations {
             Some(Ok(variations)) => variations,
@@ -256,12 +260,14 @@ fn parse_rule_vector(
         if var_rules.len() == 1 {
             let mut rule = var_rules.first().unwrap().clone();
             rule.id.clone_from(&id);
+            if auto { auto_rule_ids.push(rule.id.clone()); }
             rules.push(rule);
         } else {
+            if auto { auto_rule_ids.extend(var_rules.iter().map(|rule| rule.id.clone())); }
             rules.extend(var_rules);
         }
     }
-    return Ok(rules);
+    return Ok((rules, auto_rule_ids));
 }
 
 pub fn parse_ruleset_from_json(json_string: &str) -> Result<RuleSet, ParserError> {
@@ -271,7 +277,7 @@ pub fn parse_ruleset_from_json(json_string: &str) -> Result<RuleSet, ParserError
     let rules_json = ruleset_json.rules;
     let context = resolve_context_json(ruleset_json.context)?;
     let ruleset_variations = resolve_variations_json(ruleset_json.variations, &context)?;
-    let rule_vec = parse_rule_vector(rules_json, name.clone(), ruleset_variations, &context)?;
+    let (rule_vec, auto_rule_ids) = parse_rule_vector(rules_json, name.clone(), ruleset_variations, &context)?;
     let rule_ids = rule_vec.iter().map(|rule| rule.id.clone()).collect();
-    return Ok(RuleSet {name, context, rule_vec, rule_ids});
+    return Ok(RuleSet {name, context, rule_vec, rule_ids, auto_rule_ids});
 }
