@@ -211,6 +211,20 @@ impl PartialOrd for Address {
         Some(self.cmp(other))
     }
 }
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(")?;
+        for (i, elem) in self.path.iter().enumerate() {
+            if i > 0 { write!(f, ",")?; }
+            write!(f, "{}", elem)?;
+        }
+        if let Some(sub) = self.sub {
+            write!(f, "::{}", sub)?;
+        }
+        write!(f, ")")?;
+        Ok(())
+    }
+}
 
 
 #[macro_export]
