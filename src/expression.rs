@@ -1014,7 +1014,10 @@ pub mod get_possible_actions {
         let addr = &addr_vec[addr_vec.len()-1];
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
-        for (_, rule) in rule_map.iter() {
+        for rule_id in &context.rule_ids {
+            let rule = rule_map.get(rule_id).cloned();
+            if rule.is_none() { continue; }
+            let rule = &rule.unwrap();
             if let Ok(new_expr) = expr.apply_rule_at(rule, addr) {
                 let action = Action::ApplyRule(rule.label.clone());
                 possible_actions.push((action, new_expr));

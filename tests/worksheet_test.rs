@@ -17,10 +17,9 @@ fn init_algebra_worksheet(variables: Vec<String>, auto_simplify: bool) -> Worksh
     let mut ws = Worksheet::new();
     let ruleset = get_algebra_ruleset(auto_simplify);
     let ctx = get_arithmetic_ctx().add_params(variables);
+    ws.set_ruleset(ruleset);
     ws.set_expression_context(ctx);
     ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
-    ws.set_rule_map(ruleset.get_rule_map());
-    ws.set_auto_rule_ids(ruleset.auto_rule_ids);
     ws.set_get_possible_actions_function(|expr,ctx,addr_vec| 
         algebra::get_possible_actions::algebra(expr,ctx,addr_vec));
     return ws;
@@ -332,10 +331,11 @@ mod logic {
         let rulestr = std::fs::read_to_string(filepath).unwrap();
         let ruleset = rule::parse_ruleset_from_json(&rulestr).unwrap();
         let rulemap = ruleset.get_rule_map();
-        let mut ctx = ruleset.context;
+        let mut ctx = ruleset.context.clone();
         ctx.add_params(variables);
         
         let mut ws = Worksheet::new();
+        ws.set_ruleset(ruleset);
         ws.set_expression_context(ctx);
         ws.set_normalization_function(|expr,ctx| expr.normalize_algebra(ctx));
         ws.set_rule_map(rulemap);

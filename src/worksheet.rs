@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::{self, Debug}};
 use crate::expression::Address;
-use crate::rule::Rule;
+use crate::rule::{Rule, RuleSet};
 use super::expression::{Context, Expression};
 
 type NormalizationFunction = fn(&Expression, &Context) -> Expression;
@@ -20,6 +20,7 @@ pub struct WorksheetContext {
     pub expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
     pub rule_map: HashMap<String, Rule>,
+    pub rule_ids: Vec<String>,
     get_possible_actions_function: Option<GetPossibleActionsFunction>,
     pub labelled_expression: Vec<(String, Expression)>,
     pub auto_rule_ids: Vec<String>, // list of rules that needs to be automatically applied
@@ -244,17 +245,30 @@ impl Worksheet {
         self.context.get_possible_actions_function = Some(f);
     }
     
+    pub fn set_ruleset(&mut self, ruleset: RuleSet) {
+        let rule_map = ruleset.get_rule_map();
+        self.set_expression_context(ruleset.context);
+        self.set_rule_ids(ruleset.rule_ids);
+        self.set_auto_rule_ids(ruleset.auto_rule_ids);
+        self.set_rule_map(rule_map);
+    }
     pub fn reset_rule_map(&mut self) { 
         self.context.rule_map.clear();
     }
     pub fn set_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map = rule_map;
     }
+    pub fn set_rule_ids(&mut self, rule_ids: Vec<String>) { 
+        self.context.rule_ids = rule_ids;
+    }
     pub fn set_auto_rule_ids(&mut self, rule_ids: Vec<String>) { 
         self.context.auto_rule_ids = rule_ids;
     }
     pub fn extend_rule_map(&mut self, rule_map: HashMap<String, Rule>) { 
         self.context.rule_map.extend(rule_map);
+    }
+    pub fn extend_rule_ids(&mut self, rule_ids: Vec<String>) { 
+        self.context.rule_ids.extend(rule_ids);
     }
     
     pub fn introduce_expression(&mut self, expr: Expression) {
