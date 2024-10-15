@@ -83,7 +83,8 @@ mod simple_block {
             ..Default::default()
         };
         let block_ctx = BlockContext {
-            inverse_op: BlockContext::generate_inverse_op(vec![("+","-")])
+            inverse_op: BlockContext::generate_inverse_op(vec![("+","-")]),
+            ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(-(a),b,c,-(d),-(e))", &ctx).unwrap();
         let block = Block::from_root_expression(&expr, &block_ctx);
@@ -155,6 +156,36 @@ mod simple_block {
                 bb::symbol("d".to_string(), address![1,2]),
             ], address![1]),
         ], address![]);
+        assert_eq!(block, expected_block);
+    }
+    
+    #[test]
+    fn fraction() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c"],
+            binary_ops: vec_strings!["+", "/"],
+            ..Default::default()
+        };
+        let block_ctx = BlockContext {
+            fraction_op: vec_strings!["/"],
+            ..Default::default()
+        };
+        let expr = parser_prefix::to_expression("+(a,/(+(a,b),c))", &ctx).unwrap();
+        let block = Block::from_root_expression(&expr, &block_ctx);
+        let expected_block = bb::horizontal_container(vec![
+            bb::symbol("a".to_string(), address![0]),
+            bb::symbol("+".to_string(), address![]),
+            bb::fraction_container(vec![
+                bb::horizontal_container(vec![
+                    bb::symbol("a".to_string(), address![1,0,0]),
+                    bb::symbol("+".to_string(), address![1,0]),
+                    bb::symbol("b".to_string(), address![1,0,1]),
+                ], address![1,0]),
+                bb::symbol("c".to_string(), address![1,1]),
+            ], address![1])
+        ], address![]);
+        print_block_tree(&block);
+        print_block_tree(&expected_block);
         assert_eq!(block, expected_block);
     }
     

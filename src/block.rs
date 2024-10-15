@@ -12,7 +12,8 @@ pub enum BlockType {
 
 #[derive(Default, Clone)]
 pub struct BlockContext {
-    pub inverse_op: HashMap<String, String>
+    pub inverse_op: HashMap<String, String>,
+    pub fraction_op: Vec<String>
 }
 
 impl BlockContext {
@@ -56,7 +57,6 @@ impl Block {
             },
             ExpressionType::StatementOperatorBinary |
             ExpressionType::OperatorBinary => {
-                let operator_block = block_builder::symbol(symbol, addr.clone());
                 let expr_children = expr.children.as_ref().expect("BinaryOps have two children");
                 let left_addr = addr.append(0);
                 let left_expr = expr_children.first().expect("BinaryOps have two children");
@@ -64,7 +64,16 @@ impl Block {
                 let right_addr = addr.append(1);
                 let right_expr = expr_children.get(1).expect("BinaryOps have two children");
                 let right_block = Block::from_expression(right_expr, right_addr, ctx);
-                block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
+                
+                dbg!(&ctx.fraction_op);
+                dbg!(&symbol);
+                dbg!(&ctx.fraction_op.contains(&symbol));
+                if ctx.fraction_op.contains(&symbol) {
+                    block_builder::fraction_container(vec![left_block, right_block], addr)
+                } else {
+                    let operator_block = block_builder::symbol(symbol, addr.clone());
+                    block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
+                }
             },
             ExpressionType::OperatorNary => {
                 let operator_block = block_builder::symbol(symbol, addr.clone());
