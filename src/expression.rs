@@ -158,7 +158,11 @@ impl Address {
         return self.path[self.path.len()-1];
     }
     pub fn parent(&self) -> Self {
-        return Address { path: self.path[..self.path.len()-1].to_vec(), sub: self.sub };
+        if self.sub.is_some() {
+            return Address { path: self.path.clone(), sub: None };
+        } else {
+            return Address { path: self.path[..self.path.len()-1].to_vec(), sub: None };
+        }
     }
     pub fn is_empty(&self) -> bool {
         return self.path.is_empty() && self.sub.is_none();
