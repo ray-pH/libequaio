@@ -3,6 +3,7 @@ use crate::worksheet::{Action, WorkableExpressionSequence, WorksheetContext};
 use crate::arithmetic::{ArithmeticOperator, ArithmeticError};
 use crate::utils::gcd;
 use crate::{address, parser::parser};
+use std::cmp::{min,max};
 use lazy_static::lazy_static;
 
 // this is a module for algebra (with arithmetic)
@@ -250,7 +251,6 @@ pub mod get_possible_actions {
             expression::get_possible_actions::swap_position_in_comutative_binary(expr, context, addr_vec),
             expression::get_possible_actions::swap_position_in_assoc_train(expr, addr_vec),
             expression::get_possible_actions::flip_equation(expr, addr_vec),
-            expression::get_possible_actions::from_rule_map_at_ancestors(expr, context, addr_vec),
         ].into_iter().flatten().collect();
     }
     
@@ -261,10 +261,10 @@ pub mod get_possible_actions {
         }
     }
     fn f_apply_operation_both_side(expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>   {
-        if addr_vec.len() < 2 { return None; }
-        let addr0 = &addr_vec[addr_vec.len()-2]; // =
-        let addr1 = &addr_vec[addr_vec.len()-1];
-        // addr0 should be equation and add1 should be its grandchild
+        if addr_vec.len() != 2 { return None; }
+        let addr0 = min(&addr_vec[0], &addr_vec[1]);
+        let addr1 = max(&addr_vec[0], &addr_vec[1]);
+        // addr0 should be equation and add1 should be its grandchild or its granchild's descendant
         
         let should_be_equation_expr = expr.at(addr0).ok()?;
         if !addr0.is_empty() { return None; }
@@ -291,9 +291,9 @@ pub mod get_possible_actions {
         }
     }
     fn f_apply_fraction_arithmetic(expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>   {
-        if addr_vec.len() < 2 { return None; }
-        let addr0 = &addr_vec[addr_vec.len()-2];
-        let addr1 = &addr_vec[addr_vec.len()-1];
+        if addr_vec.len() != 2 { return None; }
+        let addr0 = &addr_vec[0];
+        let addr1 = &addr_vec[1];
         let addr_common_ancestor = Address::common_ancestor(addr0, addr1);
         
         let addr_num = std::cmp::min(addr0, addr1);

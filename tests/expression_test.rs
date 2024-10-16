@@ -15,6 +15,29 @@ fn print_matches(matches: Vec<(exp::Address,exp::MatchMap)>) {
 }
 
 #[cfg(test)]
+mod address {
+    use super::*;
+    
+    #[test]
+    fn common_ancestor() {
+        let addr0 = address![0,1];
+        let addr1 = address![0,3,2];
+        let addr_common = Address::common_ancestor(&addr0, &addr1);
+        assert_eq!(addr_common, address![0]);
+        
+        let addr0 = address![0,1].sub(1);
+        let addr1 = address![0,3,2];
+        let addr_common = Address::common_ancestor(&addr0, &addr1);
+        assert_eq!(addr_common, address![0]);
+        
+        let addr0 = address![0];
+        let addr1 = address![0,3,2];
+        let addr_common = Address::common_ancestor(&addr0, &addr1);
+        assert_eq!(addr_common, address![0]);
+    }
+}
+
+#[cfg(test)]
 mod basic {
     use super::*;
     #[test]

@@ -182,6 +182,14 @@ impl Address {
         while i < a.path.len() && i < b.path.len() && a.path[i] == b.path[i] { i += 1; }
         return Address::new(a.path[..i].to_vec(), None);
     }
+    pub fn common_ancestor_from_vec(vec: &[Address]) -> Address {
+        if vec.is_empty() { return Address::new(vec![], None) };
+        let mut common_ancestor = vec.first().expect("vec is not empty").clone();
+        for addr in vec.iter().skip(1) {
+            common_ancestor = Address::common_ancestor(&common_ancestor, addr);
+        }
+        return common_ancestor;
+    }
     
     /// 0-th order cousin is sibling
     pub fn is_nth_cousin(&self, other: &Address, n: usize) -> bool {
@@ -1028,7 +1036,7 @@ pub mod get_possible_actions {
     use super::*;
     pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         if addr_vec.is_empty() { return vec![]; }
-        let addr = &addr_vec.last().expect("addr vec is not empty");
+        let addr = &Address::common_ancestor_from_vec(addr_vec);
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
         for rule_id in &context.rule_ids {
@@ -1043,20 +1051,9 @@ pub mod get_possible_actions {
         return possible_actions;
     }
     
-    pub fn from_rule_map_at_ancestors(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)> {
-        if addr_vec.is_empty() { return vec![]; }
-        let addr = &addr_vec.last().expect("addr vec is not empty");
-        if addr.is_empty() { return vec![]; }
-        let addr_vec_parent = &[addr.parent()];
-        let mut result = from_rule_map(expr, context, addr_vec_parent);
-        let parent_result = from_rule_map_at_ancestors(expr, context, addr_vec_parent);
-        result.extend(parent_result);
-        return result;
-    }
-    
     pub fn flip_equation(expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
-        if addr_vec.is_empty() { return vec![]; }
-        let addr = &addr_vec[addr_vec.len()-1];
+        if addr_vec.len() != 1 { return vec![]; }
+        let addr = &addr_vec[0];
         
         let expr = expr.at(addr);
         if expr.is_err() { return vec![]; }
@@ -1072,9 +1069,9 @@ pub mod get_possible_actions {
     pub fn swap_position_in_assoc_train(expr: &Expression, addr_vec: &[Address]) 
     -> Vec<(Action, Expression)> 
     {
-        if addr_vec.len() < 2 { return vec![]; }
-        let addr0 = &addr_vec[addr_vec.len()-1];
-        let addr1 = &addr_vec[addr_vec.len()-2];
+        if addr_vec.len() != 2 { return vec![]; }
+        let addr0 = &addr_vec[0];
+        let addr1 = &addr_vec[1];
         if addr0.is_empty() || addr1.is_empty() { return vec![]; }
         if addr0 == addr1 { return vec![]; }
         
@@ -1101,9 +1098,9 @@ pub mod get_possible_actions {
     pub fn swap_position_in_comutative_binary(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) 
     -> Vec<(Action, Expression)> 
     {
-        if addr_vec.len() < 2 { return vec![]; }
-        let addr0 = &addr_vec[addr_vec.len()-1];
-        let addr1 = &addr_vec[addr_vec.len()-2];
+        if addr_vec.len() != 2 { return vec![]; }
+        let addr0 = &addr_vec[0];
+        let addr1 = &addr_vec[1];
         if addr0.is_empty() || addr1.is_empty() { return vec![]; }
         
         let ancestor_addr = Address::common_ancestor(addr0, addr1);
