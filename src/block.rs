@@ -12,8 +12,8 @@ pub enum BlockType {
 
 #[derive(Default, Clone)]
 pub struct BlockContext {
-    pub inverse_op: HashMap<String, String>,
-    pub fraction_op: Vec<String>
+    pub inverse_ops: HashMap<String, String>,
+    pub fraction_ops: Vec<String>
 }
 
 impl BlockContext {
@@ -65,10 +65,10 @@ impl Block {
                 let right_expr = expr_children.get(1).expect("BinaryOps have two children");
                 let right_block = Block::from_expression(right_expr, right_addr, ctx);
                 
-                dbg!(&ctx.fraction_op);
+                dbg!(&ctx.fraction_ops);
                 dbg!(&symbol);
-                dbg!(&ctx.fraction_op.contains(&symbol));
-                if ctx.fraction_op.contains(&symbol) {
+                dbg!(&ctx.fraction_ops.contains(&symbol));
+                if ctx.fraction_ops.contains(&symbol) {
                     block_builder::fraction_container(vec![left_block, right_block], addr)
                 } else {
                     let operator_block = block_builder::symbol(symbol, addr.clone());
@@ -93,7 +93,7 @@ impl Block {
             ExpressionType::AssocTrain => {
                 let mut children_blocks = Vec::new();
                 let expr_children = expr.children.as_ref().expect("AssocTrain has children");
-                let inverse_symbol = ctx.inverse_op.get(&symbol);
+                let inverse_symbol = ctx.inverse_ops.get(&symbol);
                 for (i, child) in expr_children.iter().enumerate() {
                     let child_addr = addr.append(i);
                     

@@ -83,7 +83,7 @@ mod simple_block {
             ..Default::default()
         };
         let block_ctx = BlockContext {
-            inverse_op: BlockContext::generate_inverse_op(vec![("+","-")]),
+            inverse_ops: BlockContext::generate_inverse_op(vec![("+","-")]),
             ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(-(a),b,c,-(d),-(e))", &ctx).unwrap();
@@ -167,7 +167,7 @@ mod simple_block {
             ..Default::default()
         };
         let block_ctx = BlockContext {
-            fraction_op: vec_strings!["/"],
+            fraction_ops: vec_strings!["/"],
             ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(a,/(+(a,b),c))", &ctx).unwrap();
