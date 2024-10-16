@@ -16,17 +16,6 @@ pub struct BlockContext {
     pub fraction_ops: Vec<String>
 }
 
-impl BlockContext {
-    pub fn generate_inverse_op(op_pairs: Vec<(&str, &str)>) -> HashMap<String, String> {
-        let mut inverse_op_map = HashMap::new();
-        for (op, inverse_op) in op_pairs {
-            inverse_op_map.insert(inverse_op.to_string(), op.to_string());
-            inverse_op_map.insert(op.to_string(), inverse_op.to_string());
-        }
-        return inverse_op_map;
-    }
-}
-
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Block {
     pub block_type: BlockType,

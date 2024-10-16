@@ -7,13 +7,13 @@ use equaio::algebra;
 use equaio::arithmetic::get_arithmetic_ctx;
 use equaio::block::{Block, BlockContext, block_builder};
 use equaio::worksheet::Worksheet;
-
+use std::collections::HashMap;
 
 #[cfg(test)]
 mod simple_block {
     use super::*;
     use block_builder as bb;
-    use equaio::rule::{self, RuleMap};
+    use equaio::{pair_map, rule::{self, RuleMap}};
     
     #[test]
     fn unary() {
@@ -83,7 +83,7 @@ mod simple_block {
             ..Default::default()
         };
         let block_ctx = BlockContext {
-            inverse_ops: BlockContext::generate_inverse_op(vec![("+","-")]),
+            inverse_ops: pair_map![("+","-")],
             ..Default::default()
         };
         let expr = parser_prefix::to_expression("+(-(a),b,c,-(d),-(e))", &ctx).unwrap();

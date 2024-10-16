@@ -85,6 +85,7 @@ pub struct Context {
     pub binary_ops: Vec<String>,
     pub assoc_ops: Vec<String>,
     // the rest of the symbols will be considered as n-ary operators (functions)
+    // pub inverse_ops: HashMap<String,String>,
     pub handle_numerics: bool,
     pub flags: HashSet<String>
 }
@@ -236,6 +237,18 @@ macro_rules! address {
     ($($elem:expr),*) => {
         Address::new(vec![$($elem),*], None)
     };
+}
+
+#[macro_export]
+macro_rules! pair_map {
+    ($(($a:expr, $b:expr)),* $(,)?) => {{
+        let mut map = HashMap::new();
+        $(
+            map.insert($a.to_string(), $b.to_string());
+            map.insert($b.to_string(), $a.to_string());
+        )*
+        map
+    }};
 }
 
 #[macro_export]
