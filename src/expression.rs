@@ -1015,7 +1015,7 @@ pub mod get_possible_actions {
     use super::*;
     pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         if addr_vec.is_empty() { return vec![]; }
-        let addr = &addr_vec[addr_vec.len()-1];
+        let addr = &addr_vec.last().expect("addr vec is not empty");
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
         for rule_id in &context.rule_ids {
@@ -1028,6 +1028,17 @@ pub mod get_possible_actions {
             }
         }
         return possible_actions;
+    }
+    
+    pub fn from_rule_map_at_ancestors(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)> {
+        if addr_vec.is_empty() { return vec![]; }
+        let addr = &addr_vec.last().expect("addr vec is not empty");
+        if addr.is_empty() { return vec![]; }
+        let addr_vec_parent = &[addr.parent()];
+        let mut result = from_rule_map(expr, context, addr_vec_parent);
+        let parent_result = from_rule_map_at_ancestors(expr, context, addr_vec_parent);
+        result.extend(parent_result);
+        return result;
     }
     
     pub fn flip_equation(expr: &Expression, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {

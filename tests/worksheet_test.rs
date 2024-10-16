@@ -194,7 +194,7 @@ mod get_possible_actions {
         assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![0].sub(1)], 0));
-        assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0,1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,0]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
         assert!(seq0.try_apply_action_by_index(&vec![address![0,0,0], address![0,1]], 0));
