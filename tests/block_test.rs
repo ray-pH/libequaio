@@ -1,6 +1,6 @@
 use equaio::expression as exp;
 use equaio::expression::Address;
-use equaio::vec_strings;
+use equaio::{vec_strings, vec_index_map};
 use equaio::parser::{parser_prefix, parser};
 use equaio::address;
 use equaio::algebra;
@@ -267,6 +267,50 @@ mod simple_block {
             bb::symbol("+".to_string(), address![]),
             bb::symbol("1".to_string(), address![1]),
         ], address![]);
+        print_block_tree(&block);
+        print_block_tree(&expected_block);
+        assert_eq!(block, expected_block);
+    }
+    
+    #[test]
+    fn operator_presedence() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c"],
+            binary_ops: vec_strings!["+", "*"],
+            ..Default::default()
+        };
+        let block_ctx = BlockContext {
+            op_precedence: vec_index_map!["+", "*"],
+            ..Default::default()
+        };
+        let expr = parser::to_expression("(a * b) + c", &ctx).unwrap();
+        let block = Block::from_root_expression(&expr, &block_ctx);
+        let expected_block = bb::horizontal_container(vec![
+            bb::horizontal_container(vec![
+                bb::symbol("a".to_string(), address![0,0]),
+                bb::symbol("*".to_string(), address![0]),
+                bb::symbol("b".to_string(), address![0,1]),
+            ], address![0]),
+            bb::symbol("+".to_string(), address![]),
+            bb::symbol("c".to_string(), address![1]),
+        ], address![]);
+        
+        print_block_tree(&block);
+        print_block_tree(&expected_block);
+        assert_eq!(block, expected_block);
+        
+        let expr = parser::to_expression("(a + b) * c", &ctx).unwrap();
+        let block = Block::from_root_expression(&expr, &block_ctx);
+        let expected_block = bb::horizontal_container(vec![
+            bb::horizontal_container(vec![
+                bb::symbol("a".to_string(), address![0,0]),
+                bb::symbol("+".to_string(), address![0]),
+                bb::symbol("b".to_string(), address![0,1]),
+            ], address![0]).parenthesis(),
+            bb::symbol("*".to_string(), address![]),
+            bb::symbol("c".to_string(), address![1]),
+        ], address![]);
+        
         print_block_tree(&block);
         print_block_tree(&expected_block);
         assert_eq!(block, expected_block);

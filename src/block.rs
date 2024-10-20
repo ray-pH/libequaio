@@ -11,12 +11,20 @@ pub enum BlockType {
     FractionContainer,
 }
 
+/// use `pair_map!` macro to generate `inverse_ops`
+///
+/// example: `pair_map![("+", "-"), ("*", "/")]`
+///
+/// use `vec_index_map!` macro to generate `op`
+///
+/// example: `vec_index_map!["-", "+", "/", "*"]`
 #[derive(Default, Clone)]
 pub struct BlockContext {
     pub inverse_ops: HashMap<String, String>,
     pub fraction_ops: Vec<String>,
     pub conceal_ops: Vec<String>, // ops that can be hidden, like multiplication
     //TODO: add rules for concealing (e.g. don't conceal * if it appled to numbers)
+    pub op_precedence: HashMap<String, usize>,
 }
 
 #[derive(Debug, PartialEq, Default, Clone)]
@@ -28,16 +36,33 @@ pub struct Block {
     pub has_parenthesis: bool,
 }
 
-impl Block {
-    pub fn parenthesis(&self) -> Self {
-        let mut block = self.clone();
-        block.has_parenthesis = true;
-        block
+impl BlockContext {
+    pub fn has_precedence_over(&self, a: &str, b: &str) -> bool {
+        let a_precedence = self.op_precedence.get(a);
+        let b_precedence = self.op_precedence.get(b);
+        if a_precedence.is_none() || b_precedence.is_none() { return false; }
+        return a_precedence.unwrap() > b_precedence.unwrap();
     }
-    pub fn no_parenthesis(&self) -> Self {
-        let mut block = self.clone();
-        block.has_parenthesis = false;
-        block
+}
+
+impl Block {
+    pub fn parenthesis(mut self) -> Self {
+        self.has_parenthesis = true;
+        self
+    }
+    pub fn no_parenthesis(mut self) -> Self {
+        self.has_parenthesis = false;
+        self
+    }
+    
+    fn set_parenthesis_based_on_precedence(self, ctx: &BlockContext, src_expr: &Expression, parent_op: &str) -> Block {
+        if !src_expr.is_operator() { return self; }
+        let src_op = &src_expr.symbol;
+        if ctx.has_precedence_over(parent_op, src_op) { 
+            return self.parenthesis();
+        } else {
+            return self;
+        }
     }
     
     pub fn from_root_expression(expr: &Expression, ctx: &BlockContext) -> Block {
@@ -64,10 +89,12 @@ impl Block {
                 let expr_children = expr.children.as_ref().expect("BinaryOps have two children");
                 let left_addr = addr.append(0);
                 let left_expr = expr_children.first().expect("BinaryOps have two children");
-                let left_block = Block::from_expression(left_expr, left_addr, ctx);
+                let left_block = Block::from_expression(left_expr, left_addr, ctx)
+                    .set_parenthesis_based_on_precedence(ctx, left_expr, &symbol);
                 let right_addr = addr.append(1);
                 let right_expr = expr_children.get(1).expect("BinaryOps have two children");
-                let right_block = Block::from_expression(right_expr, right_addr, ctx);
+                let right_block = Block::from_expression(right_expr, right_addr, ctx)
+                    .set_parenthesis_based_on_precedence(ctx, right_expr, &symbol);
                 
                 // dbg!(&ctx.fraction_ops);
                 // dbg!(&symbol);

@@ -20,6 +20,18 @@ macro_rules! pair_map {
     }};
 }
 
+#[macro_export]
+macro_rules! vec_index_map {
+    ($($elem:expr),*) => {{
+        let mut map = std::collections::HashMap::new();
+        let vec = vec![$($elem.to_string()),*];
+        for (index, value) in vec.into_iter().enumerate() {
+            map.insert(value, index);
+        }
+        map
+    }};
+}
+
 // Misc ===================================================
 
 pub fn is_number(s: &str) -> bool {
