@@ -348,7 +348,7 @@ pub mod get_possible_actions {
     }
     fn f_arithmetic_calculation(root_expr: &Expression, addr_vec: &[Address]) -> Option<(Action,Expression)>  {
         if addr_vec.is_empty() { return None; }
-        let addr = &Address::common_ancestor_from_vec(addr_vec);
+        let addr = &Address::common_virtual_ancestor_from_vec(addr_vec, root_expr);
         let result = root_expr.apply_simple_arithmetic_equation_at(addr).ok()?;
         let equation_expr = root_expr.generate_simple_artithmetic_equation_at(addr).ok()?;
         let name = format!("Calculate {}",  equation_expr.to_string(false));

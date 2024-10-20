@@ -184,6 +184,30 @@ mod get_possible_actions {
         assert_eq!(actions[0].1.to_string(true), "(((1 * x) + (5 * 6) + (x * 2)) = 3)");
     }
     
+    
+    #[test]
+    fn get_action_at_virtual_address() {
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
+        let expr = parser::to_expression("0 + x + 1 + 2 = 3", &ws.get_expression_context()).unwrap();
+        ws.introduce_expression(expr);
+        
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        let actions = seq0.get_possible_actions(&vec![address![0,0], address![0,1]]);
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0].0, Action::ApplyRule("Addition with 0".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "((x + 1 + 2) = 3)");
+        assert_eq!(actions[1].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[1].1.to_string(true), "((x + 0 + 1 + 2) = 3)");
+        
+        let seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        let actions = seq0.get_possible_actions(&vec![address![0,2], address![0,3]]);
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0].0, Action::ApplyAction("Calculate 1 + 2 = 3".to_string()));
+        assert_eq!(actions[0].1.to_string(true), "((0 + x + 3) = 3)");
+        assert_eq!(actions[1].0, Action::ApplyAction("Reorder".to_string()));
+        assert_eq!(actions[1].1.to_string(true), "((0 + x + 2 + 1) = 3)");
+    }
+    
     #[test]
     fn simple() {
         // solve 2*x - 1 = 3

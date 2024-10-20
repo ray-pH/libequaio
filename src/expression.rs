@@ -171,11 +171,6 @@ impl Address {
     pub fn take(&self, n: usize) -> Self {
         return Address { path: self.path[..n].to_vec(), sub: self.sub };
     }
-    pub fn to_vec(&self) -> Vec<usize> {
-        let mut v = self.path.clone();
-        if let Some(sub) = self.sub { v.push(sub); }
-        return v;
-    }
     
     pub fn common_ancestor(a: &Address, b: &Address) -> Address {
         let mut i = 0;
@@ -187,6 +182,47 @@ impl Address {
         let mut common_ancestor = vec.first().expect("vec is not empty").clone();
         for addr in vec.iter().skip(1) {
             common_ancestor = Address::common_ancestor(&common_ancestor, addr);
+        }
+        return common_ancestor;
+    }
+    /// if a and b are neighboring sibling inside an assoc train, return the sub address
+    pub fn common_virtual_ancestor(a: &Address, b: &Address, expr: &Expression) -> Address {
+        let common_ancestor_addr = Address::common_ancestor(a, b);
+        
+        let common_ancestor = expr.at(&common_ancestor_addr);
+        if common_ancestor.is_err() { return common_ancestor_addr; }
+        let common_ancestor = common_ancestor.unwrap();
+        if !common_ancestor.is_assoc_train() { return common_ancestor_addr; }
+        
+        let addr0 = std::cmp::min(a, b);
+        let addr1 = std::cmp::max(a, b);
+        let ancestor_addr_len = common_ancestor_addr.path.len();
+        let index0 = addr0.path.get(ancestor_addr_len);
+        let index1 = addr1.path.get(ancestor_addr_len);
+        
+        // check if one of the address is already the virtual ancestor
+        // [0::1], [0,0]
+        // [0::1], [0,1]
+        if addr0.sub.is_some() && addr0.parent() == common_ancestor_addr && index1.is_some() {
+            let index1 = *index1.unwrap();
+            let sub0 = addr0.sub.unwrap();
+            if (sub0 == index1) || (sub0 + 1 == index1) { return addr0.clone(); }
+        }
+        
+        if index0.is_none() || index1.is_none() { return common_ancestor_addr; }
+        
+        let index0 = *index0.unwrap();
+        let index1 = *index1.unwrap();
+        // index_a and index_b must be adjacent
+        if index0 + 1 != index1 { return common_ancestor_addr; }
+        
+        return common_ancestor_addr.sub(index0);
+    }
+    pub fn common_virtual_ancestor_from_vec(vec: &[Address], expr: &Expression) -> Address {
+        if vec.is_empty() { return Address::new(vec![], None) };
+        let mut common_ancestor = vec.first().expect("vec is not empty").clone();
+        for addr in vec.iter().skip(1) {
+            common_ancestor = Address::common_virtual_ancestor(&common_ancestor, addr, expr);
         }
         return common_ancestor;
     }
@@ -216,7 +252,17 @@ impl Address {
 
 impl Ord for Address {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.to_vec().cmp(&other.to_vec())
+        let cmp = self.path.cmp(&other.path);
+        if cmp == Ordering::Equal {
+            match (&self.sub, &other.sub) {
+                (Some(sub1), Some(sub2)) => sub1.cmp(sub2),
+                (None, None) => Ordering::Equal,
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+            }
+        } else {
+            cmp
+        }
     }
 }
 impl PartialOrd for Address {
@@ -1036,7 +1082,7 @@ pub mod get_possible_actions {
     use super::*;
     pub fn from_rule_map(expr: &Expression, context: &WorksheetContext, addr_vec: &[Address]) -> Vec<(Action, Expression)>  {
         if addr_vec.is_empty() { return vec![]; }
-        let addr = &Address::common_ancestor_from_vec(addr_vec);
+        let addr = &Address::common_virtual_ancestor_from_vec(addr_vec, expr);
         let rule_map = &context.rule_map;
         let mut possible_actions = Vec::new();
         for rule_id in &context.rule_ids {

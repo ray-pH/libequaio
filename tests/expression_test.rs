@@ -1,7 +1,7 @@
 use equaio::expression as exp;
 use equaio::expression::Address;
 use equaio::vec_strings;
-use equaio::parser::parser_prefix;
+use equaio::parser::{parser_prefix, parser};
 use equaio::address;
 
 fn print_matches(matches: Vec<(exp::Address,exp::MatchMap)>) {
@@ -34,6 +34,33 @@ mod address {
         let addr1 = address![0,3,2];
         let addr_common = Address::common_ancestor(&addr0, &addr1);
         assert_eq!(addr_common, address![0]);
+    }
+    
+    #[test]
+    fn common_virtual_ancestor() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+", "*"],
+            ..Default::default()
+        };
+        let expr = parser::to_expression("a + (b * c) + d", &ctx).unwrap();
+        let addr0 = address![0];
+        let addr1 = address![1,0];
+        let addr_common = Address::common_virtual_ancestor(&addr0, &addr1, &expr);
+        assert_eq!(addr_common, address![].sub(0));
+        
+        let expr = parser::to_expression("a + (b * c) + d", &ctx).unwrap();
+        let addr0 = address![0];
+        let addr1 = address![2];
+        let addr_common = Address::common_virtual_ancestor(&addr0, &addr1, &expr);
+        assert_eq!(addr_common, address![]);
+        
+        let expr = parser::to_expression("a + (b * c) + d", &ctx).unwrap();
+        let addr0 = address![].sub(0);
+        let addr1 = address![1,0];
+        let addr_common = Address::common_virtual_ancestor(&addr0, &addr1, &expr);
+        assert_eq!(addr_common, address![].sub(0));
     }
 }
 
