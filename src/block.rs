@@ -25,9 +25,21 @@ pub struct Block {
     pub address: Address,
     pub symbol: Option<String>,
     pub children: Option<Vec<Block>>,
+    pub has_parenthesis: bool,
 }
 
 impl Block {
+    pub fn parenthesis(&self) -> Self {
+        let mut block = self.clone();
+        block.has_parenthesis = true;
+        block
+    }
+    pub fn no_parenthesis(&self) -> Self {
+        let mut block = self.clone();
+        block.has_parenthesis = false;
+        block
+    }
+    
     pub fn from_root_expression(expr: &Expression, ctx: &BlockContext) -> Block {
         return Block::from_expression(expr, Address::default(), ctx);
     }
@@ -99,7 +111,13 @@ impl Block {
                         let grandchild_addr = child_addr.append(0);
                         let grandchild_block = Block::from_expression(grandchild, grandchild_addr, ctx);
                         
-                        // TODO: add parenthesis if the grandchild is not just a simple value
+                        // add parenthesis if the grandchild is not just a simple value
+                        let grandchild_block = if grandchild_block.block_type != BlockType::Symbol {
+                            grandchild_block.parenthesis()
+                        } else {
+                            grandchild_block
+                        };
+                        
                         let op_addr = if i == 0 { addr.append(i) } else { addr.sub(i-1) };
                         let op_block = block_builder::symbol(inverse_symbol.unwrap().clone(), op_addr);
                         children_blocks.push(op_block);
@@ -127,6 +145,7 @@ pub mod block_builder {
             symbol: Some(symbol),
             address: addr,
             children: None,
+            has_parenthesis: false,
         }
     }
     
@@ -136,6 +155,7 @@ pub mod block_builder {
             symbol: None,
             address: addr,
             children: Some(children),
+            has_parenthesis: false,
         }
     }
     

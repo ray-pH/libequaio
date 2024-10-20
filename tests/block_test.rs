@@ -107,6 +107,41 @@ mod simple_block {
     }
     
     #[test]
+    fn assoc_train_with_inverse_complex() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["a", "b", "c", "d", "e"],
+            unary_ops: vec_strings!["-"],
+            binary_ops: vec_strings!["+", "*"],
+            assoc_ops: vec_strings!["+"],
+            ..Default::default()
+        };
+        let block_ctx = BlockContext {
+            inverse_ops: pair_map![("+","-")],
+            ..Default::default()
+        };
+        let expr = parser_prefix::to_expression("+(-(a),b,-(*(c,d)),e)", &ctx).unwrap();
+        let block = Block::from_root_expression(&expr, &block_ctx);
+        let expected_block = bb::horizontal_container(vec![
+            bb::symbol("-".to_string(), address![0]),
+            bb::symbol("a".to_string(), address![0,0]),
+            bb::symbol("+".to_string(), address![].sub(0)),
+            bb::symbol("b".to_string(), address![1]),
+            bb::symbol("-".to_string(), address![].sub(1)),
+            bb::horizontal_container(vec![
+                bb::symbol("c".to_string(), address![2,0,0]),
+                bb::symbol("*".to_string(), address![2,0]),
+                bb::symbol("d".to_string(), address![2,0,1]),
+            ], address![2,0]).parenthesis(),
+            bb::symbol("+".to_string(), address![].sub(2)),
+            bb::symbol("e".to_string(), address![3]),
+        ], address![]);
+        
+        print_block_tree(&block);
+        print_block_tree(&expected_block);
+        assert_eq!(block, expected_block);
+    }
+    
+    #[test]
     fn nested_binary(){
         let ctx = exp::Context {
             parameters: vec_strings!["a", "b", "c"],
@@ -287,13 +322,14 @@ fn print_block_tree(block: &Block) {
 }
 fn f_print_block_tree(block: &Block, indent: usize) {
     let left_pad = " ".repeat(indent);
+    let has_parenthesis_str = if block.has_parenthesis { "[parenthesis]" } else { "" };
     if let Some(children) = &block.children {
-        println!("{}{:?} {} {{", left_pad, block.block_type, block.address);
+        println!("{}{:?} {} {} {{", left_pad, block.block_type, block.address, has_parenthesis_str);
         for child in children {
             f_print_block_tree(child, indent+4);
         }
         println!("{}}}", left_pad);
     } else {
-        println!("{}{:?} {}", left_pad, block.symbol.clone().unwrap_or("EMPTY".to_string()), block.address);
+        println!("{}{:?} {} {}", left_pad, block.symbol.clone().unwrap_or("EMPTY".to_string()), block.address, has_parenthesis_str);
     }
 }

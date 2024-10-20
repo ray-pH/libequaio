@@ -294,18 +294,6 @@ macro_rules! address {
 }
 
 #[macro_export]
-macro_rules! pair_map {
-    ($(($a:expr, $b:expr)),* $(,)?) => {{
-        let mut map = HashMap::new();
-        $(
-            map.insert($a.to_string(), $b.to_string());
-            map.insert($b.to_string(), $a.to_string());
-        )*
-        map
-    }};
-}
-
-#[macro_export]
 macro_rules! ctxflag {
     ($($elem:expr),*) => {
         HashSet::from(vec![$($elem.to_string()),*], None)

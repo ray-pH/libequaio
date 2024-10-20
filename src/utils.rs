@@ -8,6 +8,18 @@ macro_rules! vec_strings {
     };
 }
 
+#[macro_export]
+macro_rules! pair_map {
+    ($(($a:expr, $b:expr)),* $(,)?) => {{
+        let mut map = HashMap::new();
+        $(
+            map.insert($a.to_string(), $b.to_string());
+            map.insert($b.to_string(), $a.to_string());
+        )*
+        map
+    }};
+}
+
 // Misc ===================================================
 
 pub fn is_number(s: &str) -> bool {
