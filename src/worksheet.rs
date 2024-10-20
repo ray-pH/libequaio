@@ -15,7 +15,7 @@ pub enum Action {
     ApplyAction(String),
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct WorksheetContext {
     pub expression_context : Context,
     normalization_function: Option<NormalizationFunction>,
@@ -26,7 +26,7 @@ pub struct WorksheetContext {
     pub auto_rule_ids: Vec<String>, // list of rules that needs to be automatically applied
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ExpressionLine {
     pub action: Action,
     pub expr: Expression,
@@ -34,18 +34,18 @@ pub struct ExpressionLine {
     pub is_auto_generated: bool,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub struct WorkableExpressionSequence {
     pub history: Vec<ExpressionLine>,
     context: WorksheetContext,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub struct ExpressionSequence {
     pub history: Vec<ExpressionLine>,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub struct Worksheet {
     expression_sequences: Vec<ExpressionSequence>,
     context: WorksheetContext,

@@ -78,7 +78,7 @@ pub struct Expression {
     pub children: Option<Vec<Expression>>,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Context {
     pub parameters: Vec<String>,
     pub unary_ops: Vec<String>,

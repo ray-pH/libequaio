@@ -4,14 +4,14 @@ use crate::expression::{Address, Context, Expression, ExpressionError};
 use crate::parser::{parser_prefix, parser};
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Rule {
     pub id: String,
     pub expression: Expression,
     pub label: String,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct RuleSet {
     pub name: String,
     pub context: Context,
