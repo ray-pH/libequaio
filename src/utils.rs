@@ -8,6 +8,12 @@ macro_rules! vec_strings {
     };
 }
 
+// Misc ===================================================
+
+pub fn is_number(s: &str) -> bool {
+    s.parse::<f64>().is_ok()
+}
+
 // Math Functions ===================================================
 
 pub fn gcd(a: i64, b: i64) -> i64 {

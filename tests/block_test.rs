@@ -1,7 +1,7 @@
 use equaio::expression as exp;
 use equaio::expression::Address;
 use equaio::vec_strings;
-use equaio::parser::parser_prefix;
+use equaio::parser::{parser_prefix, parser};
 use equaio::address;
 use equaio::algebra;
 use equaio::arithmetic::get_arithmetic_ctx;
@@ -208,6 +208,32 @@ mod simple_block {
             bb::symbol("=".to_string(), address![]),
             bb::symbol("3".to_string(), address![1]),
         ], address![]);
+        assert_eq!(block, expected_block);
+    }
+    
+    #[test]
+    fn conceal_multiplication() {
+        let ctx = exp::Context {
+            parameters: vec_strings!["1", "2", "x"],
+            binary_ops: vec_strings!["*", "+"],
+            ..Default::default()
+        };
+        let block_ctx = BlockContext {
+            conceal_ops: vec_strings!["*"],
+            ..Default::default()
+        };
+        let expr = parser::to_expression("(2 * x) + 1", &ctx).unwrap();
+        let block = Block::from_root_expression(&expr, &block_ctx);
+        let expected_block = bb::horizontal_container(vec![
+            bb::horizontal_container(vec![
+                bb::symbol("2".to_string(), address![0,0]),
+                bb::symbol("x".to_string(), address![0,1]),
+            ], address![0]),
+            bb::symbol("+".to_string(), address![]),
+            bb::symbol("1".to_string(), address![1]),
+        ], address![]);
+        print_block_tree(&block);
+        print_block_tree(&expected_block);
         assert_eq!(block, expected_block);
     }
     

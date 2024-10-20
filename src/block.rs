@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use crate::expression::{Address, Expression, ExpressionType};
+use crate::utils;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum BlockType {
@@ -13,7 +14,9 @@ pub enum BlockType {
 #[derive(Default, Clone)]
 pub struct BlockContext {
     pub inverse_ops: HashMap<String, String>,
-    pub fraction_ops: Vec<String>
+    pub fraction_ops: Vec<String>,
+    pub conceal_ops: Vec<String>, // ops that can be hidden, like multiplication
+    //TODO: add rules for concealing (e.g. don't conceal * if it appled to numbers)
 }
 
 #[derive(Debug, PartialEq, Default, Clone)]
@@ -54,11 +57,15 @@ impl Block {
                 let right_expr = expr_children.get(1).expect("BinaryOps have two children");
                 let right_block = Block::from_expression(right_expr, right_addr, ctx);
                 
-                dbg!(&ctx.fraction_ops);
-                dbg!(&symbol);
-                dbg!(&ctx.fraction_ops.contains(&symbol));
+                // dbg!(&ctx.fraction_ops);
+                // dbg!(&symbol);
+                // dbg!(&ctx.fraction_ops.contains(&symbol));
+                let is_conceal = ctx.conceal_ops.contains(&symbol) && !utils::is_number(right_expr.symbol.as_str());
+                
                 if ctx.fraction_ops.contains(&symbol) {
                     block_builder::fraction_container(vec![left_block, right_block], addr)
+                } else if is_conceal {
+                    block_builder::horizontal_container(vec![left_block, right_block], addr)
                 } else {
                     let operator_block = block_builder::symbol(symbol, addr.clone());
                     block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
