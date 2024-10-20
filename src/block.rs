@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::expression::{Address, Expression, ExpressionType};
 use crate::utils;
+use crate::address;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub enum BlockType {
@@ -160,6 +161,22 @@ impl Block {
                 }
                 block_builder::horizontal_container(children_blocks, addr)
             }
+        }
+    }
+    
+    /// returns (left, middle, right) blocks
+    pub fn from_root_expression_to_alignable_blocks(expr: &Expression, ctx: &BlockContext) 
+    -> (Option<Block>, Option<Block>, Option<Block>) 
+    {
+        // TODO: implement this for non equations
+        if let (Some(lhs), Some(rhs)) = (expr.lhs(), expr.rhs()) {
+          let lhs_block = Block::from_expression(lhs, address![0], ctx);
+          let rhs_block = Block::from_expression(rhs, address![1], ctx);
+          let eq_block  = block_builder::symbol(expr.symbol.clone(), address![]);
+          return (Some(lhs_block), Some(eq_block), Some(rhs_block));
+        } else {
+          let block = Block::from_expression(expr, address![], ctx);
+          return (None, None, Some(block));
         }
     }
 }
