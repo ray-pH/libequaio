@@ -13,7 +13,7 @@ use std::collections::HashMap;
 mod simple_block {
     use super::*;
     use block_builder as bb;
-    use equaio::{pair_map, rule::{self, RuleMap}};
+    use equaio::{block::BlockTag, pair_map, rule::{self, RuleMap}};
     
     #[test]
     fn unary() {
@@ -131,7 +131,7 @@ mod simple_block {
                 bb::symbol("c".to_string(), address![2,0,0]),
                 bb::symbol("*".to_string(), address![2,0]),
                 bb::symbol("d".to_string(), address![2,0,1]),
-            ], address![2,0]).parenthesis(),
+            ], address![2,0]).add_tag(BlockTag::Parentheses),
             bb::symbol("+".to_string(), address![].sub(2)),
             bb::symbol("e".to_string(), address![3]),
         ], address![]);
@@ -306,7 +306,7 @@ mod simple_block {
                 bb::symbol("a".to_string(), address![0,0]),
                 bb::symbol("+".to_string(), address![0]),
                 bb::symbol("b".to_string(), address![0,1]),
-            ], address![0]).parenthesis(),
+            ], address![0]).add_tag(BlockTag::Parentheses),
             bb::symbol("*".to_string(), address![]),
             bb::symbol("c".to_string(), address![1]),
         ], address![]);
@@ -366,14 +366,15 @@ fn print_block_tree(block: &Block) {
 }
 fn f_print_block_tree(block: &Block, indent: usize) {
     let left_pad = " ".repeat(indent);
-    let has_parenthesis_str = if block.has_parenthesis { "[parenthesis]" } else { "" };
+    let tags_str = block.tags.iter().map(|tag| format!("{:?}", tag)).collect::<Vec<String>>().join(" ");
+    let tags_display_str = if tags_str.len() > 0 { format!("[{}]", tags_str) } else { "".to_string() };
     if let Some(children) = &block.children {
-        println!("{}{:?} {} {} {{", left_pad, block.block_type, block.address, has_parenthesis_str);
+        println!("{}{:?} {} {} {{", left_pad, block.block_type, block.address, tags_display_str);
         for child in children {
             f_print_block_tree(child, indent+4);
         }
         println!("{}}}", left_pad);
     } else {
-        println!("{}{:?} {} {}", left_pad, block.symbol.clone().unwrap_or("EMPTY".to_string()), block.address, has_parenthesis_str);
+        println!("{}{:?} {} {}", left_pad, block.symbol.clone().unwrap_or("EMPTY".to_string()), block.address, tags_display_str);
     }
 }

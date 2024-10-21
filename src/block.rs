@@ -34,7 +34,15 @@ pub struct Block {
     pub address: Address,
     pub symbol: Option<String>,
     pub children: Option<Vec<Block>>,
-    pub has_parenthesis: bool,
+    pub tags: Vec<BlockTag>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum BlockTag {
+    Parentheses,
+    Concealed,
+    LeftOfConcealed,
+    RightOfConcealed,
 }
 
 impl BlockContext {
@@ -47,20 +55,23 @@ impl BlockContext {
 }
 
 impl Block {
-    pub fn parenthesis(mut self) -> Self {
-        self.has_parenthesis = true;
+    pub fn add_tag(mut self, tag: BlockTag) -> Self {
+        self.tags.push(tag);
         self
     }
-    pub fn no_parenthesis(mut self) -> Self {
-        self.has_parenthesis = false;
+    pub fn remove_tag(mut self, tag: &BlockTag) -> Self {
+        self.tags.retain(|t| t != tag);
         self
+    }
+    pub fn contains_tag(self, tag: &BlockTag) -> bool {
+        return self.tags.contains(tag);
     }
     
     fn set_parenthesis_based_on_precedence(self, ctx: &BlockContext, src_expr: &Expression, parent_op: &str) -> Block {
         if !src_expr.is_operator() { return self; }
         let src_op = &src_expr.symbol;
         if ctx.has_precedence_over(parent_op, src_op) { 
-            return self.parenthesis();
+            return self.add_tag(BlockTag::Parentheses)
         } else {
             return self;
         }
@@ -141,7 +152,7 @@ impl Block {
                         
                         // add parenthesis if the grandchild is not just a simple value
                         let grandchild_block = if grandchild_block.block_type != BlockType::Symbol {
-                            grandchild_block.parenthesis()
+                            grandchild_block.add_tag(BlockTag::Parentheses)
                         } else {
                             grandchild_block
                         };
@@ -189,7 +200,7 @@ pub mod block_builder {
             symbol: Some(symbol),
             address: addr,
             children: None,
-            has_parenthesis: false,
+            ..Default::default()
         }
     }
     
@@ -199,7 +210,7 @@ pub mod block_builder {
             symbol: None,
             address: addr,
             children: Some(children),
-            has_parenthesis: false,
+            ..Default::default()
         }
     }
     
