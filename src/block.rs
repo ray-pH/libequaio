@@ -19,7 +19,7 @@ pub enum BlockType {
 /// use `vec_index_map!` macro to generate `op`
 ///
 /// example: `vec_index_map!["-", "+", "/", "*"]`
-#[derive(Default, Clone)]
+#[derive(Default, PartialEq, Clone)]
 pub struct BlockContext {
     pub inverse_ops: HashMap<String, String>,
     pub fraction_ops: Vec<String>,

@@ -34,13 +34,13 @@ pub struct ExpressionLine {
     pub is_auto_generated: bool,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct WorkableExpressionSequence {
     pub history: Vec<ExpressionLine>,
     context: WorksheetContext,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct ExpressionSequence {
     pub history: Vec<ExpressionLine>,
 }
