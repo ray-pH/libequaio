@@ -63,7 +63,7 @@ impl Block {
         self.tags.retain(|t| t != tag);
         self
     }
-    pub fn contains_tag(self, tag: &BlockTag) -> bool {
+    pub fn contains_tag(&self, tag: &BlockTag) -> bool {
         return self.tags.contains(tag);
     }
     
