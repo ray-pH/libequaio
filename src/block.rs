@@ -111,15 +111,20 @@ impl Block {
                 // dbg!(&ctx.fraction_ops);
                 // dbg!(&symbol);
                 // dbg!(&ctx.fraction_ops.contains(&symbol));
-                let is_conceal = ctx.conceal_ops.contains(&symbol) && !utils::is_number(right_expr.symbol.as_str());
                 
                 if ctx.fraction_ops.contains(&symbol) {
                     block_builder::fraction_container(vec![left_block, right_block], addr)
-                } else if is_conceal {
-                    block_builder::horizontal_container(vec![left_block, right_block], addr)
                 } else {
+                    let is_conceal = ctx.conceal_ops.contains(&symbol) && !utils::is_number(right_expr.symbol.as_str());
                     let operator_block = block_builder::symbol(symbol, addr.clone());
-                    block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
+                    if is_conceal {
+                        let operator_block = operator_block.add_tag(BlockTag::Concealed);
+                        let left_block = left_block.add_tag(BlockTag::LeftOfConcealed);
+                        let right_block = right_block.add_tag(BlockTag::RightOfConcealed);
+                        block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
+                    } else {
+                        block_builder::horizontal_container(vec![left_block, operator_block, right_block], addr)
+                    }
                 }
             },
             ExpressionType::OperatorNary => {

@@ -261,8 +261,9 @@ mod simple_block {
         let block = Block::from_root_expression(&expr, &block_ctx);
         let expected_block = bb::horizontal_container(vec![
             bb::horizontal_container(vec![
-                bb::symbol("2".to_string(), address![0,0]),
-                bb::symbol("x".to_string(), address![0,1]),
+                bb::symbol("2".to_string(), address![0,0]).add_tag(BlockTag::LeftOfConcealed),
+                bb::symbol("*".to_string(), address![0]).add_tag(BlockTag::Concealed),
+                bb::symbol("x".to_string(), address![0,1]).add_tag(BlockTag::RightOfConcealed),
             ], address![0]),
             bb::symbol("+".to_string(), address![]),
             bb::symbol("1".to_string(), address![1]),
