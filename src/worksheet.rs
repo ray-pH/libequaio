@@ -313,7 +313,7 @@ impl Worksheet {
         }
     }
     
-    pub fn get(&mut self, index: usize) -> Option<WorkableExpressionSequence> {
+    pub fn get(&self, index: usize) -> Option<WorkableExpressionSequence> {
         return self.get_workable_expression_sequence(index);
     }
     pub fn store(&mut self, index: usize, seq: WorkableExpressionSequence) {
