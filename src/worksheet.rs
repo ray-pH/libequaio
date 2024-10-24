@@ -328,5 +328,8 @@ impl Worksheet {
     pub fn len(&self) -> usize {
         return self.expression_sequences.len();
     }
+    pub fn is_empty(&self) -> bool {
+        return self.expression_sequences.is_empty();
+    }
     
 }
