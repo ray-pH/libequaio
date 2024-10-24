@@ -319,5 +319,8 @@ impl Worksheet {
     pub fn store(&mut self, index: usize, seq: WorkableExpressionSequence) {
         self.store_expression_sequence(index, seq);
     }
+    pub fn len(&self) -> usize {
+        return self.expression_sequences.len();
+    }
     
 }
