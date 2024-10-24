@@ -189,6 +189,12 @@ impl WorkableExpressionSequence {
         }
     }
     
+    pub fn reset_to(&mut self, index: usize) {
+        if index < self.history.len() {
+            self.history = self.history.iter().take(index+1).cloned().collect();
+        }
+    }
+    
     pub fn try_apply_auto_rules(&mut self) {
         if self.context.auto_rule_ids.is_empty() { return; }
         let rule_map = &self.context.rule_map;

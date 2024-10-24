@@ -247,6 +247,49 @@ mod get_possible_actions {
 }
 
 #[cfg(test)]
+mod misc {
+    use super::*;
+    
+    #[test]
+    fn reset_to() {
+        let mut ws = init_algebra_worksheet(vec_strings!["x"], false);
+        ws.introduce_expression(parser_prefix::to_expression("=(-(*(2,x),1),3)", &ws.get_expression_context()).unwrap());
+        
+        let mut seq0 = ws.get_workable_expression_sequence(0).unwrap();
+        assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0].sub(1)], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0,1], address![0,0]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![], address![0,0]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0,0,0], address![0,1]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
+        assert!(seq0.try_apply_action_by_index(&vec![address![0]], 0));
+        
+        seq0.reset_to(6);
+        let target = [
+            ("Introduce", "(((2 * x) - 1) = 3)"),
+            ("Apply +1 to both side", "(((2 * x) + (-1) + 1) = (3 + 1))"),
+            ("Calculate 3 + 1 = 4", "(((2 * x) + (-1) + 1) = 4)"),
+            ("Calculate -1 + 1 = 0", "(((2 * x) + 0) = 4)"),
+            ("Addition with 0", "((2 * x) = 4)"),
+            ("Apply /2 to both side", "(((2 * x) / 2) = (4 / 2))"),
+            ("Calculate 4 / 2 = 2", "(((2 * x) / 2) = 2)"),
+            // ("Simplify fraction", "(((1 * x) / 1) = 2)"),
+            // ("Division by 1", "((1 * x) = 2)"),
+            // ("Multiplication with 1", "(x = 2)"),
+        ];
+        assert_eq!(seq0.history.len(), target.len());
+        for (i, (target_action_str, target_expr_str)) in target.iter().enumerate() {
+            let line = seq0.history.get(i).unwrap();
+            assert_eq!(line.action.to_string(), target_action_str.to_string());
+            assert_eq!(line.expr.to_string(true), target_expr_str.to_string());
+        }
+    }
+    
+}
+
+#[cfg(test)]
 mod multiple_equation {
     use super::*;
     
