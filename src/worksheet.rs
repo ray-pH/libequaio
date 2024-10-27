@@ -185,7 +185,11 @@ impl WorkableExpressionSequence {
     
     pub fn label_expression(&mut self, label: String, index: usize) {
         if let Some(line) = self.history.get_mut(index) {
-            line.label = Some(label);
+            if label.is_empty() {
+                line.label = None;
+            } else {
+                line.label = Some(label);
+            }
         }
     }
     
