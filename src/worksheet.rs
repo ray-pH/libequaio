@@ -247,6 +247,10 @@ impl Worksheet {
         return ctx.expression_context.clone();
     }
     
+    pub fn get_labelled_expression(&self) -> &Vec<(String, Expression)> {
+        return &self.context.labelled_expression;
+    }
+    
     pub fn set_normalization_function(&mut self, f: NormalizationFunction) {
         self.context.normalization_function = Some(f);
     }
